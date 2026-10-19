@@ -17,6 +17,7 @@ export const MOCK_LISTINGS: Listing[] = [
     house_rules: 'No smoking inside rooms. Guests allowed till 9 PM. Veg & non-veg food available.',
     gender_allowed: 'male',
     status: 'approved',
+    created_at: '2026-09-20T10:00:00Z',
     avg_rating: 4.3,
     review_count: 27,
     rooms: [
@@ -40,6 +41,7 @@ export const MOCK_LISTINGS: Listing[] = [
     house_rules: 'Bachelors only. Parties on weekends okay with prior notice.',
     gender_allowed: 'male',
     status: 'approved',
+    created_at: '2026-09-20T10:00:00Z',
     avg_rating: 4.6,
     review_count: 12,
     rooms: [
@@ -62,6 +64,7 @@ export const MOCK_LISTINGS: Listing[] = [
     house_rules: 'Gate closes at 11 PM. ID proof mandatory at check-in.',
     gender_allowed: 'male',
     status: 'approved',
+    created_at: '2026-09-20T10:00:00Z',
     avg_rating: 4.0,
     review_count: 41,
     rooms: [
@@ -84,6 +87,7 @@ export const MOCK_LISTINGS: Listing[] = [
     house_rules: 'Couples and bachelors welcome. No lock-in beyond 1 month.',
     gender_allowed: 'any',
     status: 'approved',
+    created_at: '2026-09-20T10:00:00Z',
     avg_rating: 4.7,
     review_count: 58,
     rooms: [
@@ -106,6 +110,7 @@ export const MOCK_LISTINGS: Listing[] = [
     house_rules: 'No guests after 8 PM. Monthly payment by 5th.',
     gender_allowed: 'male',
     status: 'pending',
+    created_at: '2026-10-18T10:00:00Z',
     rooms: [
       { id: 'r10', listing_id: 'demo-5', room_type: 'double', total_beds: 16, occupied_beds: 0, rent_per_bed: 7500, deposit: 7500 },
       { id: 'r11', listing_id: 'demo-5', room_type: 'triple', total_beds: 12, occupied_beds: 0, rent_per_bed: 6000, deposit: 6000 },

@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, SearchFilters } from './types';
+import { Inquiry, Listing, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 export async function getListings(filters: SearchFilters = {}): Promise<Listing[]> {
@@ -87,7 +87,77 @@ export async function setListingStatus(
   // Demo mode: the admin page manages local state instead
 }
 
-// ---- Favorites ----
+// ---- Vacancy alerts ----
+
+const DEMO_ALERT_KEY = 'bn-demo-alerts';
+
+function readDemoAlerts(): VacancyAlert[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    return JSON.parse(localStorage.getItem(DEMO_ALERT_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function writeDemoAlerts(all: VacancyAlert[]) {
+  try {
+    localStorage.setItem(DEMO_ALERT_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+export async function getAlerts(tenantId: string): Promise<VacancyAlert[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('alerts')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as VacancyAlert[];
+  }
+  return readDemoAlerts().filter((a) => a.tenant_id === tenantId);
+}
+
+export async function createAlert(
+  tenantId: string,
+  input: { city: string; locality?: string; maxBudget?: number; roomType?: string }
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('alerts').insert({
+      tenant_id: tenantId,
+      city: input.city,
+      locality: input.locality || null,
+      max_budget: input.maxBudget ?? null,
+      room_type: input.roomType || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const all = readDemoAlerts();
+  all.unshift({
+    id: `demo-alert-${Date.now()}`,
+    tenant_id: tenantId,
+    city: input.city,
+    locality: input.locality || null,
+    max_budget: input.maxBudget ?? null,
+    room_type: (input.roomType as any) || null,
+    created_at: new Date().toISOString(),
+  });
+  writeDemoAlerts(all);
+}
+
+export async function deleteAlert(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('alerts').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  writeDemoAlerts(readDemoAlerts().filter((a) => a.id !== id));
+}
 
 // ---- Favorites ----
 

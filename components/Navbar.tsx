@@ -47,6 +47,9 @@ export default function Navbar() {
                   <Link href="/saved" className="hover:text-brand-600 dark:hover:text-brand-400">
                     ❤️ Saved
                   </Link>
+                  <Link href="/alerts" className="hover:text-brand-600 dark:hover:text-brand-400">
+                    🔔 Alerts
+                  </Link>
                 </>
               )}
               <span className="hidden text-zinc-500 sm:inline">

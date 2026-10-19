@@ -28,6 +28,7 @@ export interface Listing {
   rooms: Room[];
   avg_rating?: number;
   review_count?: number;
+  created_at?: string;
 }
 
 export interface SearchFilters {
@@ -53,6 +54,16 @@ export interface Inquiry {
   listing_locality?: string;
   listing_city?: string;
   tenant_name?: string;
+}
+
+export interface VacancyAlert {
+  id: string;
+  tenant_id: string;
+  city: string;
+  locality: string | null;
+  max_budget: number | null;
+  room_type: RoomType | null;
+  created_at: string;
 }
 
 export const availableBeds = (room: Room) => room.total_beds - room.occupied_beds;

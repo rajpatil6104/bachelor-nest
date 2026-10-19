@@ -18,6 +18,7 @@ owners — with **live vacancy availability**. Zero brokerage.
 8. Book a visit — date + message, tracked on a "My visits" page with live status
 9. Owner visit-request inbox — accept/decline requests from the dashboard
 10. Favorites — ♡ on any listing, "Saved" shortlist page
+11. Vacancy alerts — save a search as an alert, live match counts, NEW badges on fresh listings
 
 **Trust**
 10. Listings go live only after admin verification (`status = 'approved'`) via `/admin`

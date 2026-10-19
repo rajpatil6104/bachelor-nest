@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Listing, TYPE_LABELS, listingAvailableBeds, minRent } from '@/lib/types';
 import AvailabilityBadge from './AvailabilityBadge';
 import FavoriteButton from './FavoriteButton';
+import NewBadge from './NewBadge';
 
 const GRADIENTS = [
   'from-brand-500 to-navy-800',
@@ -27,9 +28,12 @@ export default function ListingCard({ listing, index = 0 }: { listing: Listing; 
       </div>
       <div className="p-4">
         <div className="mb-2 flex items-center justify-between">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {TYPE_LABELS[listing.type]}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              {TYPE_LABELS[listing.type]}
+            </span>
+            <NewBadge createdAt={listing.created_at} />
+          </div>
           <AvailabilityBadge beds={beds} />
         </div>
         <h3 className="font-semibold leading-snug group-hover:text-brand-600">{listing.title}</h3>
