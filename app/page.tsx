@@ -1,9 +1,13 @@
 import Link from 'next/link';
+import { connection } from 'next/server';
 import ListingCard from '@/components/ListingCard';
 import OwnerRedirect from '@/components/OwnerRedirect';
 import { getListings } from '@/lib/db';
 
+export const instant = false;
+
 export default async function Home() {
+  await connection(); // vacancy data is live — never prerender this page
   const listings = await getListings();
 
   return (

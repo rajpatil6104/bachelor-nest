@@ -22,22 +22,17 @@ create policy "owners update own kyc"
   with check (auth.uid() = id);
 
 -- Admins can read all profiles (to review KYC submissions)
+-- NOTE: must use public.is_admin(), never a direct subquery on profiles —
+-- a self-referencing policy causes infinite recursion (Postgres 42P17).
 create policy "admins read all profiles"
-  on public.profiles for select using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
-  );
+  on public.profiles for select
+  using (public.is_admin());
 
 -- Admins can verify / reject KYC
 create policy "admins moderate kyc"
-  on public.profiles for update using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
-  );
+  on public.profiles for update
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Private bucket for verification documents
 insert into storage.buckets (id, name, public)

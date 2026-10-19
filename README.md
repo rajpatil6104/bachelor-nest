@@ -44,6 +44,8 @@ Open http://localhost:3000 — the app runs on built-in demo listings.
    `supabase/migration_room_labels.sql` (named flat spaces),
    `supabase/migration_messages.sql` (in-app chat), and
    `supabase/migration_owner_kyc.sql` (rent cycle, KYC fields, private owner-docs bucket).
+   If you ran the KYC migration before 2026-10-20 and now see `{ code: "42P17" }`,
+   run `supabase/migration_fix_admin_recursion.sql` once to fix it.
 3. Go to **Project Settings → API**, copy the **Project URL** and **anon public key**.
 4. Copy `.env.local.example` to `.env.local` and paste the two values.
 5. Restart `npm run dev`. The app now reads/writes the real database.
