@@ -50,7 +50,7 @@ export default function AddListingPage() {
   const removeRoom = (i: number) => setRooms((prev) => prev.filter((_, j) => j !== i));
 
   const inputCls =
-    'w-full rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800';
+    'w-full rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +91,7 @@ export default function AddListingPage() {
         </p>
         <Link
           href="/login?next=/owner/add"
-          className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 font-semibold text-white hover:bg-indigo-700"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-2.5 font-semibold text-white hover:bg-brand-700"
         >
           Log in
         </Link>
@@ -114,7 +114,7 @@ export default function AddListingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/owner" className="text-sm text-indigo-600 hover:underline">
+      <Link href="/owner" className="text-sm text-brand-600 hover:underline">
         ← Back to dashboard
       </Link>
       <h1 className="mt-2 text-2xl font-bold">List your property</h1>
@@ -171,7 +171,7 @@ export default function AddListingPage() {
               <button type="button" key={a} onClick={() => toggleAmenity(a)}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                   amenities.includes(a)
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
                 }`}>
                 {a}
@@ -190,7 +190,7 @@ export default function AddListingPage() {
           <div className="mb-2 flex items-center justify-between">
             <label className="text-sm font-medium">Rooms & pricing</label>
             <button type="button" onClick={addRoom}
-              className="text-sm font-medium text-indigo-600 hover:underline">
+              className="text-sm font-medium text-brand-600 hover:underline">
               + Add room type
             </button>
           </div>
@@ -222,7 +222,7 @@ export default function AddListingPage() {
         </div>
 
         <button type="submit" disabled={saving}
-          className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+          className="w-full rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
           {saving ? 'Submitting…' : 'Submit for verification'}
         </button>
         {!isSupabaseConfigured() && (

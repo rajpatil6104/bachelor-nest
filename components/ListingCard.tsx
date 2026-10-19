@@ -3,10 +3,10 @@ import { Listing, TYPE_LABELS, listingAvailableBeds, minRent } from '@/lib/types
 import AvailabilityBadge from './AvailabilityBadge';
 
 const GRADIENTS = [
-  'from-indigo-500 to-purple-600',
-  'from-emerald-500 to-teal-600',
-  'from-orange-500 to-rose-600',
-  'from-sky-500 to-blue-600',
+  'from-brand-500 to-navy-800',
+  'from-brand-400 to-brand-700',
+  'from-navy-700 to-brand-600',
+  'from-brand-600 to-navy-900',
 ];
 
 export default function ListingCard({ listing, index = 0 }: { listing: Listing; index?: number }) {
@@ -28,7 +28,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: Listing; 
           </span>
           <AvailabilityBadge beds={beds} />
         </div>
-        <h3 className="font-semibold leading-snug group-hover:text-indigo-600">{listing.title}</h3>
+        <h3 className="font-semibold leading-snug group-hover:text-brand-600">{listing.title}</h3>
         <p className="mt-1 text-sm text-zinc-500">
           {listing.locality}, {listing.city}
         </p>

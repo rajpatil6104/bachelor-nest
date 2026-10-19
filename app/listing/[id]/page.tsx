@@ -22,12 +22,12 @@ export default async function ListingDetail({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/search" className="text-sm text-indigo-600 hover:underline">
+      <Link href="/search" className="text-sm text-brand-600 hover:underline">
         ← Back to search
       </Link>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex h-56 items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
+        <div className="flex h-56 items-center justify-center bg-gradient-to-br from-brand-500 to-navy-800">
           <span className="text-7xl opacity-80">🏠</span>
         </div>
 
@@ -88,7 +88,7 @@ export default async function ListingDetail({
             {listing.amenities.map((a) => (
               <span
                 key={a}
-                className="rounded-full bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200"
+                className="rounded-full bg-brand-50 px-3 py-1 text-sm text-brand-700 dark:bg-brand-900 dark:text-brand-200"
               >
                 ✓ {a}
               </span>
@@ -101,10 +101,10 @@ export default async function ListingDetail({
 
           {/* Actions */}
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700">
+            <button className="flex-1 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-700">
               📅 Book a visit
             </button>
-            <button className="flex-1 rounded-xl border border-indigo-600 px-6 py-3 font-semibold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950">
+            <button className="flex-1 rounded-xl border border-brand-600 px-6 py-3 font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950">
               💬 Chat with owner
             </button>
           </div>

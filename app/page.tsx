@@ -8,14 +8,14 @@ export default async function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 px-4 py-16 text-white sm:py-24">
+      <section className="bg-gradient-to-br from-navy-900 via-brand-800 to-brand-600 px-4 py-16 text-white sm:py-24">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Find a bachelor-friendly stay.
             <br />
             See live availability.
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-indigo-100">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-brand-100">
             PGs, hostels, rooms & flats listed directly by owners — with real,
             up-to-date vacancy counts. No brokers. No &ldquo;family only&rdquo; rejections.
           </p>
@@ -37,7 +37,7 @@ export default async function Home() {
             />
             <button
               type="submit"
-              className="rounded-xl bg-indigo-600 px-8 py-3 font-semibold text-white hover:bg-indigo-700"
+              className="rounded-xl bg-brand-600 px-8 py-3 font-semibold text-white hover:bg-brand-700"
             >
               Search
             </button>
@@ -49,7 +49,7 @@ export default async function Home() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Featured stays</h2>
-          <Link href="/search" className="text-sm font-medium text-indigo-600 hover:underline">
+          <Link href="/search" className="text-sm font-medium text-brand-600 hover:underline">
             View all →
           </Link>
         </div>

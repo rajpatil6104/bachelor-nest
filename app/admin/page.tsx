@@ -55,7 +55,7 @@ export default function AdminPage() {
         </p>
         <Link
           href="/login?next=/admin"
-          className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 font-semibold text-white hover:bg-indigo-700"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-2.5 font-semibold text-white hover:bg-brand-700"
         >
           Log in
         </Link>

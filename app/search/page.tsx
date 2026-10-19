@@ -40,14 +40,14 @@ function SearchResults() {
           value={city}
           onChange={(e) => setCity(e.target.value)}
           placeholder="City"
-          className="rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800"
+          className="rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800"
         />
         <input
           value={maxBudget}
           onChange={(e) => setMaxBudget(e.target.value)}
           type="number"
           placeholder="Max budget ₹/mo"
-          className="rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800"
+          className="rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800"
         />
         <select
           value={type}

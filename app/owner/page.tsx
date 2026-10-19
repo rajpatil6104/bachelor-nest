@@ -75,7 +75,7 @@ export default function OwnerDashboard() {
         </p>
         <Link
           href="/login?next=/owner"
-          className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 font-semibold text-white hover:bg-indigo-700"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-2.5 font-semibold text-white hover:bg-brand-700"
         >
           Log in
         </Link>
@@ -94,7 +94,7 @@ export default function OwnerDashboard() {
         </div>
         <Link
           href="/owner/add"
-          className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           + Add listing
         </Link>
@@ -103,7 +103,7 @@ export default function OwnerDashboard() {
       {listings.length === 0 && (
         <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-zinc-500">
           No listings yet.{' '}
-          <Link href="/owner/add" className="text-indigo-600 hover:underline">
+          <Link href="/owner/add" className="text-brand-600 hover:underline">
             Add your first property
           </Link>
         </div>

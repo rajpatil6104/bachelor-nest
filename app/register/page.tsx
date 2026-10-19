@@ -36,7 +36,7 @@ export default function RegisterPage() {
   }
 
   const inputCls =
-    'w-full rounded-xl border border-zinc-200 px-3 py-2.5 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800';
+    'w-full rounded-xl border border-zinc-200 px-3 py-2.5 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800';
 
   return (
     <div className="mx-auto max-w-md px-4 py-12">
@@ -57,7 +57,7 @@ export default function RegisterPage() {
               onClick={() => setRole(o.v)}
               className={`rounded-xl border-2 px-4 py-3 text-sm font-semibold transition ${
                 role === o.v
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950'
+                  ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950'
                   : 'border-zinc-200 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300'
               }`}
             >
@@ -95,7 +95,7 @@ export default function RegisterPage() {
 
         <button
           type="submit" disabled={busy}
-          className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {busy ? 'Creating account…' : 'Create account'}
         </button>
@@ -103,7 +103,7 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-zinc-500">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-indigo-600 hover:underline">
+        <Link href="/login" className="font-medium text-brand-600 hover:underline">
           Log in
         </Link>
       </p>
