@@ -41,7 +41,7 @@ export default function KycReview() {
               r.sent
                 ? `✓ Verification email sent to ${target.email}`
                 : r.reason === 'not-configured'
-                  ? 'Owner verified, but the verification email was skipped (EmailJS not configured — see README).'
+                  ? 'Owner verified, but the verification email was skipped (Gmail not configured — see README).'
                   : `Owner verified, but the email could not be sent (${r.reason}).`
             );
           });

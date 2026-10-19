@@ -86,16 +86,20 @@ verified onboarding:
 
 ### Owner verification emails (optional)
 
-When an admin verifies an owner, the app emails them via **EmailJS** (free tier,
-no backend needed). Without it, verification still works — the email is skipped
-and the admin sees a note.
+When an admin verifies an owner, the app emails them from **your Gmail account**
+via a small server-side API route (`/api/notify`) — only admins can trigger it,
+and the credentials never touch the browser. Without it, verification still
+works — the email is skipped and the admin sees a note.
 
-1. Create an account at https://www.emailjs.com and add an **Email service** (Gmail works).
-2. Create an **Email Template** using the variables `{{to_name}}` and `{{to_email}}`,
-   e.g. subject "You're verified on BachelorNest 🎉" and body:
-   "Hi {{to_name}}, your owner account is verified — log in and add your stays!"
-3. Copy the **Service ID**, **Template ID** and **Public Key** into `.env.local`
-   (see `.env.example`) and restart `npm run dev`.
+1. In your Google Account, go to **Security** and turn on **2-Step Verification**.
+2. Then search **"App passwords"** → create one for **Mail** → Google shows a
+   16-letter code. (Never use your real Gmail password here.)
+3. Put them in `.env.local` (see `.env.example`):
+   `GMAIL_USER=you@gmail.com` and `GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx`
+4. Restart `npm run dev`.
+
+Note: regular Gmail accounts can send ~500 emails/day this way — plenty for
+verification mails. Keep the App Password secret like any password.
 
 ## Project structure
 

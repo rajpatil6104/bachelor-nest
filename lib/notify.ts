@@ -1,50 +1,43 @@
 // Sends the "you're verified" email to an owner after admin approval.
-// Uses EmailJS (free tier, public key is safe in client code). If the
-// NEXT_PUBLIC_EMAILJS_* vars are not configured, it no-ops gracefully and
-// the caller should tell the admin the email was skipped.
+// Goes through the server-side /api/notify route, which sends it from the
+// app's Gmail account (GMAIL_USER + GMAIL_APP_PASSWORD in .env.local).
+// The route validates that the caller is an admin, so the credentials never
+// touch the browser. If Gmail isn't configured, it no-ops gracefully.
 // Setup guide: README.md → "Owner verification emails".
+
+import { getSupabase } from './supabase';
 
 export interface NotifyResult {
   sent: boolean;
-  reason?: 'not-configured' | 'no-email' | 'error';
+  reason?: 'not-configured' | 'no-email' | 'error' | 'unauthorized' | 'forbidden';
 }
 
 export async function sendVerifiedEmail(
   toEmail: string | null,
   toName: string | null
 ): Promise<NotifyResult> {
-  const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-  const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
-  const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
-
   if (!toEmail) return { sent: false, reason: 'no-email' };
-  if (!serviceId || !templateId || !publicKey) {
-    console.warn('[notify] EmailJS not configured — skipping verification email.');
-    return { sent: false, reason: 'not-configured' };
-  }
+
+  const sb = getSupabase();
+  if (!sb) return { sent: false, reason: 'error' };
+
+  const { data } = await sb.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { sent: false, reason: 'unauthorized' };
 
   try {
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    const res = await fetch('/api/notify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_id: serviceId,
-        template_id: templateId,
-        user_id: publicKey,
-        template_params: {
-          to_email: toEmail,
-          to_name: toName ?? 'Owner',
-          app_name: 'BachelorNest',
-        },
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ toEmail, toName }),
     });
-    if (!res.ok) {
-      console.warn('[notify] EmailJS send failed:', await res.text());
-      return { sent: false, reason: 'error' };
-    }
-    return { sent: true };
+    const json = (await res.json()) as NotifyResult;
+    return { sent: !!json.sent, reason: json.reason };
   } catch (err) {
-    console.warn('[notify] EmailJS error:', err);
+    console.warn('[notify] request failed:', err);
     return { sent: false, reason: 'error' };
   }
 }
