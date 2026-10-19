@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import AvailabilityBadge from '@/components/AvailabilityBadge';
 import BookVisit from '@/components/BookVisit';
 import FavoriteButton from '@/components/FavoriteButton';
+import PhotoGallery from '@/components/PhotoGallery';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds } from '@/lib/types';
 
@@ -29,9 +30,7 @@ export default async function ListingDetail({
       </Link>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex h-56 items-center justify-center bg-gradient-to-br from-brand-500 to-navy-800">
-          <span className="text-7xl opacity-80">🏠</span>
-        </div>
+        <PhotoGallery photos={listing.photos} title={listing.title} />
 
         <div className="p-6">
           <div className="flex flex-wrap items-center gap-2">

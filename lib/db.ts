@@ -87,6 +87,31 @@ export async function setListingStatus(
   // Demo mode: the admin page manages local state instead
 }
 
+// ---- Listing photos (Supabase Storage) ----
+
+export async function uploadListingPhotos(
+  ownerId: string,
+  files: File[]
+): Promise<string[]> {
+  const sb = getSupabase();
+  if (!sb) {
+    // Demo mode: session-only preview URLs (not persisted)
+    return files.map((f) => URL.createObjectURL(f));
+  }
+  const urls: string[] = [];
+  for (const file of files) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${ownerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await sb
+      .storage.from('listing-photos')
+      .upload(path, file, { contentType: file.type || 'image/jpeg' });
+    if (error) throw error;
+    const { data } = sb.storage.from('listing-photos').getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
+}
+
 // ---- Vacancy alerts ----
 
 const DEMO_ALERT_KEY = 'bn-demo-alerts';

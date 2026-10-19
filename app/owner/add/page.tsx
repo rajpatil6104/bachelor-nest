@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AMENITY_OPTIONS, ListingType, RoomType } from '@/lib/types';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { uploadListingPhotos } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 
 interface RoomInput {
@@ -34,6 +35,8 @@ export default function AddListingPage() {
   const [description, setDescription] = useState('');
   const [houseRules, setHouseRules] = useState('');
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [photoError, setPhotoError] = useState('');
   const [rooms, setRooms] = useState<RoomInput[]>([
     { room_type: 'double', total_beds: 6, rent_per_bed: 8000, deposit: 8000 },
   ]);
@@ -49,6 +52,35 @@ export default function AddListingPage() {
 
   const removeRoom = (i: number) => setRooms((prev) => prev.filter((_, j) => j !== i));
 
+  const MAX_PHOTOS = 8;
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    setPhotoError('');
+    const files = Array.from(e.target.files ?? []);
+    const valid: { file: File; preview: string }[] = [];
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) {
+        setPhotoError('Only image files are allowed.');
+        continue;
+      }
+      if (f.size > 5 * 1024 * 1024) {
+        setPhotoError('Each photo must be under 5 MB.');
+        continue;
+      }
+      valid.push({ file: f, preview: URL.createObjectURL(f) });
+    }
+    setPhotos((prev) => [...prev, ...valid].slice(0, MAX_PHOTOS));
+    e.target.value = '';
+  }
+
+  function removePhoto(i: number) {
+    setPhotos((prev) => {
+      const removed = prev[i];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, j) => j !== i);
+    });
+  }
+
   const inputCls =
     'w-full rounded-xl border border-zinc-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800';
 
@@ -57,12 +89,17 @@ export default function AddListingPage() {
     setSaving(true);
     const sb = getSupabase();
     if (sb && isSupabaseConfigured() && user) {
+      const photoUrls = await uploadListingPhotos(
+        user.id,
+        photos.map((p) => p.file)
+      );
       const { data: listing, error } = await sb
         .from('listings')
         .insert({
           owner_id: user.id,
           type, title, description, address, city, locality,
           amenities, house_rules: houseRules, gender_allowed: 'male',
+          photos: photoUrls,
           status: 'pending',
         })
         .select('id')
@@ -162,6 +199,49 @@ export default function AddListingPage() {
           <label className="mb-1 block text-sm font-medium">Description</label>
           <textarea required value={description} onChange={(e) => setDescription(e.target.value)}
             rows={3} placeholder="What makes your place good for bachelors?" className={inputCls} />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Photos <span className="font-normal text-zinc-500">(up to {MAX_PHOTOS})</span>
+          </label>
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 px-4 py-6 text-center transition hover:border-brand-500 dark:border-zinc-700">
+            <span className="text-3xl">📸</span>
+            <span className="mt-1 text-sm font-medium text-brand-700 dark:text-brand-300">
+              Tap to add photos
+            </span>
+            <span className="text-xs text-zinc-500">JPG/PNG, max 5 MB each</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
+          </label>
+          {photoError && <p className="mt-1 text-sm text-red-600">{photoError}</p>}
+          {photos.length > 0 && (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {photos.map((p, i) => (
+                <div key={i} className="relative aspect-square overflow-hidden rounded-xl">
+                  <img src={p.preview} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    aria-label="Remove photo"
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {!isSupabaseConfigured() && photos.length > 0 && (
+            <p className="mt-1 text-xs text-zinc-400">
+              Demo mode — previews only. Connect Supabase to store photos permanently.
+            </p>
+          )}
         </div>
 
         <div>

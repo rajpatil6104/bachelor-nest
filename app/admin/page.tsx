@@ -114,6 +114,19 @@ export default function AdminPage() {
 
               <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">{l.description}</p>
 
+              {l.photos.length > 0 && (
+                <div className="mt-3 flex gap-2 overflow-x-auto">
+                  {l.photos.map((src, i) => (
+                    <img
+                      key={i}
+                      src={src}
+                      alt={`${l.title} photo ${i + 1}`}
+                      className="h-20 w-28 shrink-0 rounded-lg object-cover"
+                    />
+                  ))}
+                </div>
+              )}
+
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-semibold">Rooms</h3>
