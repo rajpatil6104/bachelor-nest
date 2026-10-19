@@ -575,3 +575,224 @@ async function withLiveRatings(sb: any, listings: Listing[]): Promise<Listing[]>
     };
   });
 }
+
+// ---- In-app chat ----
+
+export interface ChatMessage {
+  id: string;
+  listing_id: string;
+  sender_id: string;
+  receiver_id: string;
+  sender_name: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface Conversation {
+  listing_id: string;
+  listing_title: string;
+  other_id: string;
+  other_name: string;
+  last_body: string;
+  last_at: string;
+  unread: number;
+}
+
+const DEMO_MSG_KEY = 'bn-demo-messages';
+
+const DEMO_SEED_MESSAGES: ChatMessage[] = [
+  {
+    id: 'seed-m1', listing_id: 'demo-1',
+    sender_id: 'demo-owner', receiver_id: 'demo-tenant', sender_name: 'Demo Owner',
+    body: 'Hi! Yes, the double-sharing room is available from next month.',
+    created_at: '2026-10-15T09:30:00Z', read_at: '2026-10-15T10:00:00Z',
+  },
+  {
+    id: 'seed-m2', listing_id: 'demo-1',
+    sender_id: 'demo-tenant', receiver_id: 'demo-owner', sender_name: 'Demo Bachelor',
+    body: 'Great! Is the food included in the rent or extra?',
+    created_at: '2026-10-15T10:05:00Z', read_at: null,
+  },
+];
+
+function readDemoMessages(): ChatMessage[] {
+  if (typeof window === 'undefined') return DEMO_SEED_MESSAGES;
+  try {
+    const raw = localStorage.getItem(DEMO_MSG_KEY);
+    const saved: ChatMessage[] = raw ? JSON.parse(raw) : [];
+    const ids = new Set(saved.map((m) => m.id));
+    return [...saved, ...DEMO_SEED_MESSAGES.filter((m) => !ids.has(m.id))];
+  } catch {
+    return DEMO_SEED_MESSAGES;
+  }
+}
+
+function writeDemoMessages(msgs: ChatMessage[]) {
+  if (typeof window === 'undefined') return;
+  const seedIds = new Set(DEMO_SEED_MESSAGES.map((m) => m.id));
+  localStorage.setItem(
+    DEMO_MSG_KEY,
+    JSON.stringify(msgs.filter((m) => !seedIds.has(m.id)))
+  );
+}
+
+function demoListingTitles(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const l of MOCK_LISTINGS) map[l.id] = l.title;
+  return map;
+}
+
+export async function getConversations(me: string): Promise<Conversation[]> {
+  const sb = getSupabase();
+  let msgs: (ChatMessage & { listing_title?: string })[];
+  if (sb) {
+    const { data, error } = await sb
+      .from('messages')
+      .select('*, listings(title)')
+      .or(`sender_id.eq.${me},receiver_id.eq.${me}`)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    msgs = (data ?? []).map((m: any) => ({
+      ...(m as ChatMessage),
+      listing_title: m.listings?.title ?? 'Listing',
+    }));
+  } else {
+    const titles = demoListingTitles();
+    msgs = readDemoMessages()
+      .filter((m) => m.sender_id === me || m.receiver_id === me)
+      .map((m) => ({ ...m, listing_title: titles[m.listing_id] ?? 'Listing' }))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  const convos = new Map<string, Conversation>();
+  for (const m of msgs) {
+    const other = m.sender_id === me ? m.receiver_id : m.sender_id;
+    const key = `${m.listing_id}|${other}`;
+    const existing = convos.get(key);
+    const otherName =
+      m.sender_id === me
+        ? existing?.other_name ?? '…'
+        : m.sender_name || '…';
+    if (!existing) {
+      convos.set(key, {
+        listing_id: m.listing_id,
+        listing_title: m.listing_title ?? 'Listing',
+        other_id: other,
+        other_name: otherName,
+        last_body: m.body,
+        last_at: m.created_at,
+        unread: m.receiver_id === me && !m.read_at ? 1 : 0,
+      });
+    } else if (m.receiver_id === me && !m.read_at) {
+      existing.unread += 1;
+    }
+    // Fill in the other party's name from any message they sent
+    const c = convos.get(key)!;
+    if (m.sender_id !== me && m.sender_name) c.other_name = m.sender_name;
+  }
+  return [...convos.values()];
+}
+
+export async function getMessages(
+  listingId: string,
+  me: string,
+  other: string
+): Promise<ChatMessage[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('messages')
+      .select('*')
+      .eq('listing_id', listingId)
+      .or(
+        `and(sender_id.eq.${me},receiver_id.eq.${other}),and(sender_id.eq.${other},receiver_id.eq.${me})`
+      )
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as ChatMessage[];
+  }
+  return readDemoMessages()
+    .filter(
+      (m) =>
+        m.listing_id === listingId &&
+        ((m.sender_id === me && m.receiver_id === other) ||
+          (m.sender_id === other && m.receiver_id === me))
+    )
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+export async function sendMessage(
+  listingId: string,
+  senderId: string,
+  senderName: string,
+  receiverId: string,
+  body: string
+): Promise<void> {
+  const text = body.trim();
+  if (!text) throw new Error('Message is empty');
+  if (text.length > 1000) throw new Error('Message is too long (max 1000 chars)');
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('messages').insert({
+      listing_id: listingId,
+      sender_id: senderId,
+      receiver_id: receiverId,
+      sender_name: senderName,
+      body: text,
+    });
+    if (error) throw error;
+    return;
+  }
+  const all = readDemoMessages();
+  all.push({
+    id: `demo-m-${Date.now()}`,
+    listing_id: listingId,
+    sender_id: senderId,
+    receiver_id: receiverId,
+    sender_name: senderName,
+    body: text,
+    created_at: new Date().toISOString(),
+    read_at: null,
+  });
+  writeDemoMessages(all);
+}
+
+export async function markMessagesRead(
+  listingId: string,
+  me: string,
+  other: string
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    await sb
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('listing_id', listingId)
+      .eq('sender_id', other)
+      .eq('receiver_id', me)
+      .is('read_at', null);
+    return;
+  }
+  const all = readDemoMessages().map((m) =>
+    m.listing_id === listingId &&
+    m.sender_id === other &&
+    m.receiver_id === me &&
+    !m.read_at
+      ? { ...m, read_at: new Date().toISOString() }
+      : m
+  );
+  writeDemoMessages(all);
+}
+
+export async function getUnreadCount(me: string): Promise<number> {
+  const sb = getSupabase();
+  if (sb) {
+    const { count } = await sb
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', me)
+      .is('read_at', null);
+    return count ?? 0;
+  }
+  return readDemoMessages().filter((m) => m.receiver_id === me && !m.read_at).length;
+}

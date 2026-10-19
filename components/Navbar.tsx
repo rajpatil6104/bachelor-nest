@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import ChatNavLink from './ChatNavLink';
 import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
@@ -39,6 +40,7 @@ export default function Navbar() {
                   🛡️ Review
                 </Link>
               )}
+              <ChatNavLink />
               {user.role === 'tenant' && (
                 <>
                   <Link href="/visits" className="hover:text-brand-600 dark:hover:text-brand-400">

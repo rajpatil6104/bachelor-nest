@@ -39,8 +39,10 @@ Open http://localhost:3000 — the app runs on built-in demo listings.
 1. Create a project at https://supabase.com (free).
 2. In the Supabase dashboard, open **SQL Editor** and run the whole
    `supabase/schema.sql` file from this repo. It creates all tables + security policies.
-   Then also run `supabase/migration_admin_policies.sql` (admin review) and
-   `supabase/migration_storage.sql` (photo uploads bucket).
+   Then also run `supabase/migration_admin_policies.sql` (admin review),
+   `supabase/migration_storage.sql` (photo uploads bucket),
+   `supabase/migration_room_labels.sql` (named flat spaces), and
+   `supabase/migration_messages.sql` (in-app chat).
 3. Go to **Project Settings → API**, copy the **Project URL** and **anon public key**.
 4. Copy `.env.local.example` to `.env.local` and paste the two values.
 5. Restart `npm run dev`. The app now reads/writes the real database.

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import AvailabilityBadge from '@/components/AvailabilityBadge';
 import BookVisit from '@/components/BookVisit';
+import ChatCta from '@/components/ChatCta';
 import FavoriteButton from '@/components/FavoriteButton';
 import PhotoGallery from '@/components/PhotoGallery';
 import ReviewsSection from '@/components/ReviewsSection';
@@ -145,12 +146,10 @@ export default async function ListingDetail({
           {/* Actions */}
           <div className="mt-8 space-y-3">
             <BookVisit listingId={listing.id} />
-            <button className="w-full rounded-xl border border-brand-600 px-6 py-3 font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-500 dark:text-brand-300 dark:hover:bg-brand-950">
-              💬 Chat with owner
-            </button>
+            <ChatCta listingId={listing.id} ownerId={listing.owner_id} />
           </div>
           <p className="mt-3 text-center text-xs text-zinc-400">
-            Chat activates in a later update — visit booking works now.
+            Chat and visit booking are free — no brokerage, ever.
           </p>
         </div>
       </div>

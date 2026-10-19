@@ -161,6 +161,12 @@ export default function OwnerDashboard() {
                 </div>
                 {inq.status === 'pending' && (
                   <div className="flex gap-2">
+                    <Link
+                      href={`/chat?listing=${inq.listing_id}&with=${inq.tenant_id}`}
+                      className="rounded-full border border-brand-300 px-4 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-950"
+                    >
+                      💬 Chat
+                    </Link>
                     <button
                       onClick={() => moderateInquiry(inq.id, 'rejected')}
                       disabled={acting === inq.id}
