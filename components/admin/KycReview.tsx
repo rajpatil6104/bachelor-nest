@@ -30,30 +30,33 @@ export default function KycReview() {
   async function decide(id: string, status: 'verified' | 'rejected') {
     setActing(id);
     setEmailNote('');
+    // Grab the target BEFORE updating state — sending the email inside the
+    // setProfiles updater would fire twice in dev (StrictMode double-invokes
+    // updaters) and is a side effect where it doesn't belong.
+    const target = profiles.find((p) => p.id === id);
     try {
       await setKycStatus(id, status);
-      setProfiles((prev) => {
-        const target = prev.find((p) => p.id === id);
-        // Email the owner the moment they're verified
-        if (target && status === 'verified') {
-          sendVerifiedEmail(target.email, target.full_name).then((r) => {
-            setEmailNote(
-              r.sent
-                ? `✓ Verification email sent to ${target.email}`
-                : r.reason === 'not-configured'
-                  ? 'Owner verified, but the verification email was skipped (Gmail not configured — see README).'
-                  : `Owner verified, but the email could not be sent (${r.reason}).`
-            );
-          });
-        }
-        return prev.filter((p) => p.id !== id);
-      });
+      setProfiles((prev) => prev.filter((p) => p.id !== id));
+      if (target && status === 'verified') {
+        const r = await sendVerifiedEmail(target.email, target.full_name);
+        setEmailNote(
+          r.sent
+            ? `✓ Verification email sent to ${target.email}`
+            : r.reason === 'not-configured'
+              ? 'Owner verified, but the email was skipped: add GMAIL_USER and GMAIL_APP_PASSWORD to .env.local (exactly those names, no NEXT_PUBLIC_ prefix) and restart the dev server.'
+              : r.reason === 'no-email'
+                ? 'Owner verified, but they have no email on their profile — the email could not be sent.'
+                : `Owner verified, but the email could not be sent (${r.reason}). Check the server logs.`
+        );
+      }
     } finally {
       setActing(null);
     }
   }
 
-  if (profiles.length === 0) return null;
+  // Keep the section (and the email note) visible even after the last
+  // pending owner is handled — otherwise the note above would never be seen.
+  if (profiles.length === 0 && !emailNote) return null;
 
   return (
     <div className="mt-10">
