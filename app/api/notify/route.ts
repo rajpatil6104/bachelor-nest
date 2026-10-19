@@ -73,7 +73,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: false, reason: 'error' }, { status: 500 });
   }
 
-  const sb = createClient(url, anonKey);
+  // Run DB queries AS the calling user: RLS policies (e.g. "users read own
+  // profile") read auth.uid() from the request's JWT. With only the anon key,
+  // auth.uid() is null, the profile lookup returns nothing, and every admin
+  // gets a false "forbidden".
+  const sb = createClient(url, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
   const {
     data: { user },
     error: userError,
