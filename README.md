@@ -68,7 +68,7 @@ New listings are `pending` until approved at `/admin` (Approve / Reject).
 verified onboarding:
 
 1. Register with first name, last name, mobile number, email, password (+ confirm).
-2. Enter the 6-digit OTP emailed to them (Supabase sends it automatically).
+2. Enter the 6-digit OTP emailed to them from the app's Gmail (see below).
 3. Upload a government ID (image/PDF) as authentication proof.
 4. Until an admin verifies them at `/admin`, owners **cannot log in** — the login
    screen tells them verification is pending.
@@ -81,40 +81,27 @@ verified onboarding:
 - Phone OTP login can be added later via
   `supabase.auth.signInWithOtp({ phone })` once you configure an SMS provider
   (Twilio/MSG91) in the Supabase dashboard.
-- Note: Supabase free tier limits OTP emails per hour — if codes stop arriving
-  while testing, wait a bit and resend.
+- Note: Supabase's "Confirm email" must stay OFF (see OTP section above);
+  the app handles email verification itself with the Gmail OTP.
 
-### Getting a 6-digit OTP code instead of a magic link
+### Owner OTP emails (sent by the app via Gmail — Supabase sends nothing)
 
-By default Supabase's OTP email contains a **login link**, not a code — so the
-app's OTP screen has nothing to accept. Fix it once in the dashboard:
+Owner registration uses a self-hosted OTP: the app generates the 6-digit code
+and emails it from your Gmail. No Supabase email templates or custom SMTP
+needed — in fact, you can now **disable** the custom SMTP you added earlier.
 
-1. Supabase dashboard → **Authentication → Email Templates** → select **Magic Link**.
-2. Set the subject to `Your BachelorNest verification code`.
-3. Replace the entire message body with
-   `supabase/email-templates/magic-link-otp.html` from this repo and **Save**.
+1. Run `supabase/migration_email_otp.sql` in the SQL editor. It creates an
+   `email_otps` table plus two locked-down functions that store codes as
+   SHA-256 hashes (10-minute expiry, single-use, 5 wrong attempts lock,
+   max 5 codes per email per hour).
+2. In Supabase dashboard → **Authentication → Providers → Email**, turn **OFF**
+   "Confirm email". This stops Supabase sending any auth emails and makes
+   `signUp` return a session immediately after the OTP is verified.
+3. Put `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env.local` (see `.env.example`).
 
-The key change is `{{ .Token }}` (the 6-digit code) instead of
-`{{ .ConfirmationURL }}` (the link).
-
-### Sending auth emails from your Gmail instead of Supabase
-
-By default Supabase sends auth emails (OTP codes, confirmations) from its own
-mail servers. To send them from your Gmail account instead:
-
-1. Supabase dashboard → **Project Settings → Auth** → scroll to **SMTP Settings**.
-2. Enable **Custom SMTP** and fill in:
-   - **Sender email:** your Gmail address · **Sender name:** `BachelorNest`
-   - **Host:** `smtp.gmail.com` · **Port:** `587`
-   - **Username:** your Gmail address
-   - **Password:** your Gmail **App Password** (the same 16-letter code from
-     the verification-email setup below — Google Account → Security →
-     2-Step Verification → App passwords → Mail)
-3. Save, then test with a real owner registration.
-
-After this, every auth email goes out through Google's servers from your
-address. (Gmail allows ~500/day — plenty here. If credentials are wrong,
-emails silently fail, so do one test signup after saving.)
+How it works: `/api/otp/send` creates the code and emails a branded template →
+`/api/otp/verify` checks it → the app creates the account with `signUp`.
+The old `supabase/email-templates/magic-link-otp.html` is no longer used.
 
 ### Owner verification emails (optional)
 

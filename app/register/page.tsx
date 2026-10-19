@@ -48,15 +48,6 @@ export default function RegisterPage() {
     return null;
   }
 
-  function friendlyOtpError(message: string): string {
-    // Supabase returns a raw "HTTP 504" when its email send times out —
-    // almost always a misconfigured custom SMTP server.
-    if (/504/.test(message)) {
-      return 'The email service timed out (HTTP 504). This usually means the custom SMTP settings in Supabase (Project Settings → Auth → SMTP Settings) are wrong — double-check the Gmail App Password (no spaces) and try again.';
-    }
-    return message;
-  }
-
   async function handleDetails(e: React.FormEvent) {
     e.preventDefault();
     const err = validateDetails();
@@ -84,22 +75,33 @@ export default function RegisterPage() {
       return;
     }
 
-    // Owners: email OTP verification first
+    // Owners: verify email with our own OTP, sent from the app's Gmail —
+    // Supabase itself sends nothing in this flow.
     const sb = getSupabase();
     if (!sb) {
       setError('Connect Supabase to enable owner registration, or use a demo login.');
       return;
     }
     setBusy(true);
-    const { error } = await sb.auth.signInWithOtp({
-      email: email.trim(),
-      options: { data: { full_name: fullName, phone: cleanPhone, role: 'owner' } },
-    });
-    setBusy(false);
-    if (error) {
-      setError(friendlyOtpError(error.message));
+    setError('');
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), name: fullName }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setError(json.message ?? 'Could not send the code. Please try again.');
+        setBusy(false);
+        return;
+      }
+    } catch {
+      setError('Could not send the code. Check your connection and try again.');
+      setBusy(false);
       return;
     }
+    setBusy(false);
     setStep('otp');
     setNotice(`We sent a 6-digit code to ${email.trim()}. Enter it below.`);
   }
@@ -115,34 +117,47 @@ export default function RegisterPage() {
     }
     setBusy(true);
     setError('');
-    const { data, error } = await sb.auth.verifyOtp({
-      email: email.trim(),
-      token: code,
-      type: 'email',
-    });
-    if (error || !data.session) {
-      setBusy(false);
-      setError(error?.message ?? 'Invalid code. Please try again.');
-      return;
-    }
-    // Set the password they chose (OTP login doesn't set one)
-    const { error: pwError } = await sb.auth.updateUser({ password });
-    if (pwError) {
-      setBusy(false);
-      setError(pwError.message);
-      return;
-    }
-    const authId = data.session.user.id;
-    // Guard: this email must not already belong to a tenant/admin
-    const existing = await getOwnerProfile(authId);
-    if (existing && existing.role !== 'owner') {
-      await sb.auth.signOut();
-      setBusy(false);
-      setStep('details');
-      setError('This email is already registered with a different account type.');
-      return;
-    }
     try {
+      const vres = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), code }),
+      });
+      const vjson = await vres.json();
+      if (!vres.ok || !vjson.ok) {
+        setError(vjson.message ?? 'Invalid or expired code. Please try again.');
+        setBusy(false);
+        return;
+      }
+
+      // Code verified — create the account. Supabase sends no email here;
+      // "Confirm email" must be OFF in the dashboard (Auth → Providers → Email)
+      // so signUp returns a session immediately.
+      const { data, error } = await sb.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { data: { full_name: fullName, phone: cleanPhone, role: 'owner' } },
+      });
+      if (error) {
+        setError(error.message);
+        setBusy(false);
+        return;
+      }
+      if (!data.session) {
+        // Address already registered — work out which case it is
+        await handleExistingEmail(sb);
+        setBusy(false);
+        return;
+      }
+      const authId = data.session.user.id;
+      const existing = await getOwnerProfile(authId);
+      if (existing && existing.role !== 'owner') {
+        await sb.auth.signOut();
+        setBusy(false);
+        setStep('details');
+        setError('This email is already registered with a different account type.');
+        return;
+      }
       await ensureOwnerProfile({
         id: authId,
         role: 'owner',
@@ -150,24 +165,64 @@ export default function RegisterPage() {
         phone: cleanPhone,
         email: email.trim(),
       });
+      setBusy(false);
+      setNotice('');
+      setStep('docs');
     } catch (err) {
       setBusy(false);
-      setError(err instanceof Error ? err.message : 'Could not create your profile.');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    }
+  }
+
+  // signUp returned no session => the email is taken. Probe with the given
+  // password to give a useful message instead of a dead end.
+  async function handleExistingEmail(sb: NonNullable<ReturnType<typeof getSupabase>>) {
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) {
+      if (/email not confirmed/i.test(error.message)) {
+        setError(
+          'This email needs confirmation — please turn OFF "Confirm email" in Supabase ' +
+            '(Authentication → Providers → Email) and try again.'
+        );
+      } else {
+        setError('This email is already registered. Please log in instead.');
+      }
       return;
     }
-    setBusy(false);
-    setNotice('');
-    setStep('docs');
+    const p = await getOwnerProfile(data.user.id);
+    await sb.auth.signOut();
+    if (p && p.role === 'owner' && p.kyc_status === 'verified') {
+      setError('This email already has a verified owner account. Please log in.');
+    } else if (p && p.role === 'owner') {
+      setError(
+        "You've already registered with this email — your verification is still pending. " +
+          "We'll email you once approved."
+      );
+    } else {
+      setError('This email is already registered with a different account type.');
+    }
   }
 
   async function resendOtp() {
-    const sb = getSupabase();
-    if (!sb) return;
     setBusy(true);
-    const { error } = await sb.auth.signInWithOtp({ email: email.trim() });
-    setBusy(false);
-    if (error) setError(friendlyOtpError(error.message));
-    else setNotice('Code resent — check your inbox (and spam folder).');
+    setError('');
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), name: fullName }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) setError(json.message ?? 'Could not resend the code.');
+      else setNotice('Code resent — check your inbox (and spam folder).');
+    } catch {
+      setError('Could not resend the code. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleDocs(e: React.FormEvent) {
