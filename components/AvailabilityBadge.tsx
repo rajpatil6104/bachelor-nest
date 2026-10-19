@@ -1,11 +1,18 @@
 
 
-export default function AvailabilityBadge({ beds }: { beds: number }) {
+export default function AvailabilityBadge({
+  beds,
+  unit = 'beds',
+}: {
+  beds: number;
+  unit?: 'beds' | 'spaces';
+}) {
   if (beds > 0) {
+    const word = unit === 'spaces' ? 'space' : 'bed';
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">
         <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-        {beds} bed{beds === 1 ? '' : 's'} available
+        {beds} {word}{beds === 1 ? '' : 's'} available
       </span>
     );
   }

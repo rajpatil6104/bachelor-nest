@@ -38,7 +38,7 @@ export default async function ListingDetail({
             <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium dark:bg-zinc-800">
               {TYPE_LABELS[listing.type]}
             </span>
-            <AvailabilityBadge beds={totalBeds} />
+            <AvailabilityBadge beds={totalBeds} unit={listing.type === 'flat' ? 'spaces' : 'beds'} />
             {listing.avg_rating && (
               <span className="text-sm font-medium text-amber-600">
                 ★ {listing.avg_rating} ({listing.review_count} reviews)
@@ -56,7 +56,43 @@ export default async function ListingDetail({
           <p className="mt-4 text-zinc-700 dark:text-zinc-300">{listing.description}</p>
 
           {/* Rooms & availability */}
-          <h2 className="mt-8 text-xl font-bold">Rooms & live availability</h2>
+          {listing.type === 'flat' || listing.type === 'room' ? (
+            <>
+              <h2 className="mt-8 text-xl font-bold">
+                {listing.type === 'flat' ? 'Spaces & monthly pricing' : 'Room & monthly pricing'}
+              </h2>
+              <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-100 dark:bg-zinc-800">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Space</th>
+                      <th className="px-4 py-2 text-right">Rent/month</th>
+                      <th className="px-4 py-2 text-right">Deposit</th>
+                      <th className="px-4 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listing.rooms.map((r) => (
+                      <tr key={r.id} className="border-t border-zinc-200 dark:border-zinc-700">
+                        <td className="px-4 py-2">{r.label ?? '—'}</td>
+                        <td className="px-4 py-2 text-right">₹{r.rent_per_bed.toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-2 text-right">₹{r.deposit.toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-2 text-right">
+                          {r.occupied_beds > 0 ? (
+                            <span className="font-semibold text-red-600">Occupied</span>
+                          ) : (
+                            <span className="font-semibold text-green-600">Available</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="mt-8 text-xl font-bold">Rooms & live availability</h2>
           <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
             <table className="w-full text-sm">
               <thead className="bg-zinc-100 dark:bg-zinc-800">
@@ -86,6 +122,8 @@ export default async function ListingDetail({
               </tbody>
             </table>
           </div>
+            </>
+          )}
 
           {/* Amenities */}
           <h2 className="mt-8 text-xl font-bold">Amenities</h2>

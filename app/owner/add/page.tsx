@@ -10,9 +10,11 @@ import { useAuth } from '@/lib/auth';
 
 interface RoomInput {
   room_type: RoomType;
+  label: string;
   total_beds: number;
   rent_per_bed: number;
   deposit: number;
+  available: boolean; // used by the flat/room custom section
 }
 
 export default function AddListingPage() {
@@ -38,19 +40,35 @@ export default function AddListingPage() {
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [photoError, setPhotoError] = useState('');
   const [rooms, setRooms] = useState<RoomInput[]>([
-    { room_type: 'double', total_beds: 6, rent_per_bed: 8000, deposit: 8000 },
+    { room_type: 'double', label: '', total_beds: 6, rent_per_bed: 8000, deposit: 8000, available: true },
   ]);
+
+  // Custom pricing for flats (multiple spaces) and rooms (single)
+  const [flatSpaces, setFlatSpaces] = useState<RoomInput[]>([
+    { room_type: 'single', label: 'Master bedroom', total_beds: 1, rent_per_bed: 12000, deposit: 24000, available: true },
+  ]);
+  const [roomInfo, setRoomInfo] = useState<RoomInput>(
+    { room_type: 'single', label: 'Private room', total_beds: 1, rent_per_bed: 9000, deposit: 18000, available: true },
+  );
 
   const toggleAmenity = (a: string) =>
     setAmenities((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
 
   const addRoom = () =>
-    setRooms((prev) => [...prev, { room_type: 'double', total_beds: 4, rent_per_bed: 7000, deposit: 7000 }]);
+    setRooms((prev) => [...prev, { room_type: 'double', label: '', total_beds: 4, rent_per_bed: 7000, deposit: 7000, available: true }]);
 
   const updateRoom = (i: number, patch: Partial<RoomInput>) =>
     setRooms((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const removeRoom = (i: number) => setRooms((prev) => prev.filter((_, j) => j !== i));
+
+  const isCustomPricing = type === 'flat' || type === 'room';
+
+  const addFlatSpace = () =>
+    setFlatSpaces((prev) => [...prev, { room_type: 'single', label: '', total_beds: 1, rent_per_bed: 8000, deposit: 16000, available: true }]);
+  const updateFlatSpace = (i: number, patch: Partial<RoomInput>) =>
+    setFlatSpaces((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const removeFlatSpace = (i: number) => setFlatSpaces((prev) => prev.filter((_, j) => j !== i));
 
   const MAX_PHOTOS = 8;
 
@@ -105,9 +123,28 @@ export default function AddListingPage() {
         .select('id')
         .single();
       if (!error && listing) {
-        await sb.from('rooms').insert(
-          rooms.map((r) => ({ listing_id: listing.id, ...r, occupied_beds: 0 }))
-        );
+        // Flats/rooms use custom per-space pricing; PG/hostel/co-living use the beds model
+        const customUnits = type === 'flat' ? flatSpaces : type === 'room' ? [roomInfo] : null;
+        const roomRows = customUnits
+          ? customUnits.map((u) => ({
+              listing_id: listing.id,
+              room_type: 'single' as RoomType,
+              label: u.label.trim() || null,
+              total_beds: 1,
+              occupied_beds: u.available ? 0 : 1,
+              rent_per_bed: u.rent_per_bed,
+              deposit: u.deposit,
+            }))
+          : rooms.map((r) => ({
+              listing_id: listing.id,
+              room_type: r.room_type,
+              label: null,
+              total_beds: r.total_beds,
+              occupied_beds: 0,
+              rent_per_bed: r.rent_per_bed,
+              deposit: r.deposit,
+            }));
+        await sb.from('rooms').insert(roomRows);
       }
     }
     // Demo mode: just show confirmation
@@ -266,14 +303,76 @@ export default function AddListingPage() {
             rows={2} placeholder="e.g. Guests allowed till 9 PM…" className={inputCls} />
         </div>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm font-medium">Rooms & pricing</label>
-            <button type="button" onClick={addRoom}
-              className="text-sm font-medium text-brand-600 hover:underline">
-              + Add room type
-            </button>
+        {type === 'flat' ? (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-sm font-medium">Spaces & monthly pricing</label>
+              <button type="button" onClick={addFlatSpace}
+                className="text-sm font-medium text-brand-600 hover:underline">
+                + Add space
+              </button>
+            </div>
+            <p className="mb-2 text-xs text-zinc-500">
+              Name each rentable space in your flat with its own monthly rent.
+              Untick spaces that are already occupied.
+            </p>
+            {flatSpaces.map((s, i) => (
+              <div key={i} className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-5">
+                <input value={s.label}
+                  onChange={(e) => updateFlatSpace(i, { label: e.target.value })}
+                  placeholder="Space name — e.g. Master bedroom" className={inputCls} />
+                <input type="number" min={0} value={s.rent_per_bed}
+                  onChange={(e) => updateFlatSpace(i, { rent_per_bed: Number(e.target.value) })}
+                  placeholder="Rent ₹/month" title="Monthly rent" className={inputCls} />
+                <input type="number" min={0} value={s.deposit}
+                  onChange={(e) => updateFlatSpace(i, { deposit: Number(e.target.value) })}
+                  placeholder="Deposit ₹" title="Deposit" className={inputCls} />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={s.available}
+                    onChange={(e) => updateFlatSpace(i, { available: e.target.checked })}
+                    className="h-4 w-4 accent-teal-600" />
+                  Available
+                </label>
+                <button type="button" onClick={() => removeFlatSpace(i)}
+                  className="text-sm text-red-600 hover:underline">
+                  Remove
+                </button>
+              </div>
+            ))}
           </div>
+        ) : type === 'room' ? (
+          <div>
+            <label className="mb-2 block text-sm font-medium">Room & monthly pricing</label>
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-4">
+              <select value={roomInfo.label}
+                onChange={(e) => setRoomInfo((prev) => ({ ...prev, label: e.target.value }))}
+                className={inputCls}>
+                <option value="Private room">Private room</option>
+                <option value="Sharing room">Sharing room</option>
+              </select>
+              <input type="number" min={0} value={roomInfo.rent_per_bed}
+                onChange={(e) => setRoomInfo((prev) => ({ ...prev, rent_per_bed: Number(e.target.value) }))}
+                placeholder="Rent ₹/month" title="Monthly rent" className={inputCls} />
+              <input type="number" min={0} value={roomInfo.deposit}
+                onChange={(e) => setRoomInfo((prev) => ({ ...prev, deposit: Number(e.target.value) }))}
+                placeholder="Deposit ₹" title="Deposit" className={inputCls} />
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={roomInfo.available}
+                  onChange={(e) => setRoomInfo((prev) => ({ ...prev, available: e.target.checked }))}
+                  className="h-4 w-4 accent-teal-600" />
+                Available
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-sm font-medium">Rooms & pricing</label>
+              <button type="button" onClick={addRoom}
+                className="text-sm font-medium text-brand-600 hover:underline">
+                + Add room type
+              </button>
+            </div>
           {rooms.map((r, i) => (
             <div key={i} className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-5">
               <select value={r.room_type}
@@ -299,7 +398,8 @@ export default function AddListingPage() {
               </button>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         <button type="submit" disabled={saving}
           className="w-full rounded-xl bg-brand-600 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-50">

@@ -5,6 +5,7 @@ export interface Room {
   id: string;
   listing_id: string;
   room_type: RoomType;
+  label?: string | null;
   total_beds: number;
   occupied_beds: number;
   rent_per_bed: number;

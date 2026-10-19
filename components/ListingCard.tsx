@@ -42,7 +42,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: Listing; 
             </span>
             <NewBadge createdAt={listing.created_at} />
           </div>
-          <AvailabilityBadge beds={beds} />
+          <AvailabilityBadge beds={beds} unit={listing.type === 'flat' ? 'spaces' : 'beds'} />
         </div>
         <h3 className="font-semibold leading-snug group-hover:text-brand-600">{listing.title}</h3>
         <p className="mt-1 text-sm text-zinc-500">
