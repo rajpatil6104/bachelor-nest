@@ -87,6 +87,104 @@ export async function setListingStatus(
   // Demo mode: the admin page manages local state instead
 }
 
+// ---- Favorites ----
+
+// ---- Favorites ----
+
+const DEMO_FAV_KEY = 'bn-demo-favorites';
+
+function readDemoFavorites(): { tenant_id: string; listing_id: string }[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    return JSON.parse(localStorage.getItem(DEMO_FAV_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function writeDemoFavorites(all: { tenant_id: string; listing_id: string }[]) {
+  try {
+    localStorage.setItem(DEMO_FAV_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+export async function getFavoriteIds(tenantId: string): Promise<string[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('favorites')
+      .select('listing_id')
+      .eq('tenant_id', tenantId);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => r.listing_id as string);
+  }
+  return readDemoFavorites()
+    .filter((f) => f.tenant_id === tenantId)
+    .map((f) => f.listing_id);
+}
+
+export async function getFavoriteListings(tenantId: string): Promise<Listing[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('favorites')
+      .select('listing_id, listings!inner(*, rooms(*))')
+      .eq('tenant_id', tenantId);
+    if (error) throw error;
+    return ((data ?? []) as any[])
+      .map((r) => r.listings)
+      .filter(Boolean) as Listing[];
+  }
+  const ids = new Set(
+    readDemoFavorites()
+      .filter((f) => f.tenant_id === tenantId)
+      .map((f) => f.listing_id)
+  );
+  return MOCK_LISTINGS.filter((l) => ids.has(l.id));
+}
+
+export async function toggleFavorite(
+  tenantId: string,
+  listingId: string
+): Promise<boolean> {
+  // returns true if now favorited
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb
+      .from('favorites')
+      .select('listing_id')
+      .eq('tenant_id', tenantId)
+      .eq('listing_id', listingId)
+      .maybeSingle();
+    if (data) {
+      const { error } = await sb
+        .from('favorites')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .eq('listing_id', listingId);
+      if (error) throw error;
+      return false;
+    }
+    const { error } = await sb
+      .from('favorites')
+      .insert({ tenant_id: tenantId, listing_id: listingId });
+    if (error) throw error;
+    return true;
+  }
+  const all = readDemoFavorites();
+  const idx = all.findIndex(
+    (f) => f.tenant_id === tenantId && f.listing_id === listingId
+  );
+  if (idx >= 0) {
+    all.splice(idx, 1);
+    writeDemoFavorites(all);
+    return false;
+  }
+  all.push({ tenant_id: tenantId, listing_id: listingId });
+  writeDemoFavorites(all);
+  return true;
+}
+
 // ---- Visit inquiries ----
 
 const DEMO_INQ_KEY = 'bn-demo-inquiries';

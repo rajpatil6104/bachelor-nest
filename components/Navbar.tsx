@@ -40,9 +40,14 @@ export default function Navbar() {
                 </Link>
               )}
               {user.role === 'tenant' && (
-                <Link href="/visits" className="hover:text-brand-600 dark:hover:text-brand-400">
-                  My visits
-                </Link>
+                <>
+                  <Link href="/visits" className="hover:text-brand-600 dark:hover:text-brand-400">
+                    My visits
+                  </Link>
+                  <Link href="/saved" className="hover:text-brand-600 dark:hover:text-brand-400">
+                    ❤️ Saved
+                  </Link>
+                </>
               )}
               <span className="hidden text-zinc-500 sm:inline">
                 Hi, {user.name.split(' ')[0]}

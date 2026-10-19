@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import AvailabilityBadge from '@/components/AvailabilityBadge';
 import BookVisit from '@/components/BookVisit';
+import FavoriteButton from '@/components/FavoriteButton';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds } from '@/lib/types';
 
@@ -45,7 +46,10 @@ export default async function ListingDetail({
             )}
           </div>
 
-          <h1 className="mt-3 text-3xl font-bold">{listing.title}</h1>
+          <div className="mt-3 flex items-start justify-between gap-4">
+            <h1 className="text-3xl font-bold">{listing.title}</h1>
+            <FavoriteButton listingId={listing.id} size="lg" />
+          </div>
           <p className="mt-1 text-zinc-500">
             {listing.address}, {listing.locality}, {listing.city}
           </p>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Listing, TYPE_LABELS, listingAvailableBeds, minRent } from '@/lib/types';
 import AvailabilityBadge from './AvailabilityBadge';
+import FavoriteButton from './FavoriteButton';
 
 const GRADIENTS = [
   'from-brand-500 to-navy-800',
@@ -18,8 +19,11 @@ export default function ListingCard({ listing, index = 0 }: { listing: Listing; 
       href={`/listing/${listing.id}`}
       className="group overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <div className={`flex h-40 items-center justify-center bg-gradient-to-br ${gradient}`}>
+      <div className={`relative flex h-40 items-center justify-center bg-gradient-to-br ${gradient}`}>
         <span className="text-5xl opacity-80">🏠</span>
+        <div className="absolute right-3 top-3">
+          <FavoriteButton listingId={listing.id} />
+        </div>
       </div>
       <div className="p-4">
         <div className="mb-2 flex items-center justify-between">

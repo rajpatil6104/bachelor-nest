@@ -17,6 +17,7 @@ owners — with **live vacancy availability**. Zero brokerage.
 7. Availability badges everywhere ("4 beds available" / "Full")
 8. Book a visit — date + message, tracked on a "My visits" page with live status
 9. Owner visit-request inbox — accept/decline requests from the dashboard
+10. Favorites — ♡ on any listing, "Saved" shortlist page
 
 **Trust**
 10. Listings go live only after admin verification (`status = 'approved'`) via `/admin`
