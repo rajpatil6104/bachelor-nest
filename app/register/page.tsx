@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Role, useAuth } from '@/lib/auth';
+import { Role, useAuth, PENDING_KEY } from '@/lib/auth';
 import { getSupabase } from '@/lib/supabase';
 import {
   ensureOwnerProfile,
@@ -133,6 +133,16 @@ export default function RegisterPage() {
       // Code verified — create the account. Supabase sends no email here;
       // "Confirm email" must be OFF in the dashboard (Auth → Providers → Email)
       // so signUp returns a session immediately.
+      //
+      // IMPORTANT: signUp fires SIGNED_IN, and the auth listener auto-creates
+      // the profile via ensureProfile — which defaults to role='tenant' unless
+      // PENDING_KEY tells it otherwise. Set it first so owners land as owners.
+      try {
+        localStorage.setItem(
+          PENDING_KEY,
+          JSON.stringify({ name: fullName, role: 'owner', phone: cleanPhone })
+        );
+      } catch {}
       const { data, error } = await sb.auth.signUp({
         email: email.trim(),
         password,
@@ -193,10 +203,28 @@ export default function RegisterPage() {
       return;
     }
     const p = await getOwnerProfile(data.user.id);
+    const isFresh =
+      !p || (p.role === 'owner' && p.kyc_status === 'none' && (p.kyc_docs ?? []).length === 0);
+    if (isFresh) {
+      // Signed in fine but never finished registering (e.g. abandoned halfway,
+      // or a profile row was cleaned up) — continue as owner instead of
+      // dead-ending. The probe sign-in above already established a session,
+      // which the ID-upload step needs.
+      await ensureOwnerProfile({
+        id: data.user.id,
+        role: 'owner',
+        full_name: fullName,
+        phone: cleanPhone,
+        email: email.trim(),
+      });
+      setNotice('');
+      setStep('docs');
+      return;
+    }
     await sb.auth.signOut();
-    if (p && p.role === 'owner' && p.kyc_status === 'verified') {
+    if (p?.role === 'owner' && p?.kyc_status === 'verified') {
       setError('This email already has a verified owner account. Please log in.');
-    } else if (p && p.role === 'owner') {
+    } else if (p?.role === 'owner') {
       setError(
         "You've already registered with this email — your verification is still pending. " +
           "We'll email you once approved."

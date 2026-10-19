@@ -31,7 +31,10 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx | null>(null);
 const DEMO_KEY = 'bn-demo-user';
-const PENDING_KEY = 'bn-pending-signup';
+// Set before any signUp so ensureProfile creates the profile with the right
+// role. The owner OTP flow sets this too — without it, the auto-created
+// profile would default to role='tenant'.
+export const PENDING_KEY = 'bn-pending-signup';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -50,7 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
     const name = pending?.name ?? email.split('@')[0];
     const role = pending?.role ?? 'tenant';
-    await sb.from('profiles').insert({ id: authId, role, full_name: name, email, phone: pending?.phone ?? null });
+    // Upsert (not insert): the owner OTP flow may race this callback against
+    // its own ensureOwnerProfile — both write role='owner', so last-write-wins
+    // is harmless here.
+    await sb
+      .from('profiles')
+      .upsert(
+        { id: authId, role, full_name: name, email, phone: pending?.phone ?? null },
+        { onConflict: 'id' }
+      );
     try {
       localStorage.removeItem(PENDING_KEY);
     } catch {}
