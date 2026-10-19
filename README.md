@@ -84,6 +84,19 @@ verified onboarding:
 - Note: Supabase free tier limits OTP emails per hour — if codes stop arriving
   while testing, wait a bit and resend.
 
+### Getting a 6-digit OTP code instead of a magic link
+
+By default Supabase's OTP email contains a **login link**, not a code — so the
+app's OTP screen has nothing to accept. Fix it once in the dashboard:
+
+1. Supabase dashboard → **Authentication → Email Templates** → select **Magic Link**.
+2. Set the subject to `Your BachelorNest verification code`.
+3. Replace the entire message body with
+   `supabase/email-templates/magic-link-otp.html` from this repo and **Save**.
+
+The key change is `{{ .Token }}` (the 6-digit code) instead of
+`{{ .ConfirmationURL }}` (the link).
+
 ### Owner verification emails (optional)
 
 When an admin verifies an owner, the app emails them from **your Gmail account**
@@ -100,6 +113,10 @@ works — the email is skipped and the admin sees a note.
 
 Note: regular Gmail accounts can send ~500 emails/day this way — plenty for
 verification mails. Keep the App Password secret like any password.
+The email is a branded BachelorNest template (navy header, embedded logo,
+teal accents, "Log in & add your stays" button). Set `NEXT_PUBLIC_SITE_URL`
+in `.env.local` (see `.env.example`) once the app is deployed so the button
+links to your live site.
 
 ## Project structure
 
