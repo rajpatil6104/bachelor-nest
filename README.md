@@ -97,6 +97,25 @@ app's OTP screen has nothing to accept. Fix it once in the dashboard:
 The key change is `{{ .Token }}` (the 6-digit code) instead of
 `{{ .ConfirmationURL }}` (the link).
 
+### Sending auth emails from your Gmail instead of Supabase
+
+By default Supabase sends auth emails (OTP codes, confirmations) from its own
+mail servers. To send them from your Gmail account instead:
+
+1. Supabase dashboard → **Project Settings → Auth** → scroll to **SMTP Settings**.
+2. Enable **Custom SMTP** and fill in:
+   - **Sender email:** your Gmail address · **Sender name:** `BachelorNest`
+   - **Host:** `smtp.gmail.com` · **Port:** `587`
+   - **Username:** your Gmail address
+   - **Password:** your Gmail **App Password** (the same 16-letter code from
+     the verification-email setup below — Google Account → Security →
+     2-Step Verification → App passwords → Mail)
+3. Save, then test with a real owner registration.
+
+After this, every auth email goes out through Google's servers from your
+address. (Gmail allows ~500/day — plenty here. If credentials are wrong,
+emails silently fail, so do one test signup after saving.)
+
 ### Owner verification emails (optional)
 
 When an admin verifies an owner, the app emails them from **your Gmail account**
