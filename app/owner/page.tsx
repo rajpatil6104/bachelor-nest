@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getOwnerListings, getOwnerInquiries, getOwnerProfile, setInquiryStatus } from '@/lib/db';
+import { getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import OwnerGate from '@/components/owner/OwnerGate';
 import {
   Inquiry,
   Listing,
@@ -20,7 +21,6 @@ export default function OwnerDashboard() {
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [kycStatus, setKycStatus] = useState('none');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
@@ -33,11 +33,10 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     if (!user || user.role !== 'owner') return;
-    Promise.all([getOwnerListings(user.id), getOwnerInquiries(user.id), getOwnerProfile(user.id)]).then(
-      ([l, inq, p]) => {
+    Promise.all([getOwnerListings(user.id), getOwnerInquiries(user.id)]).then(
+      ([l, inq]) => {
         setListings(l);
         setInquiries(inq);
-        if (p) setKycStatus(p.kyc_status);
         setLoading(false);
       }
     );
@@ -125,24 +124,9 @@ export default function OwnerDashboard() {
   ];
 
   return (
+    <OwnerGate>
     <div className="mx-auto max-w-5xl px-4 py-6">
       <h1 className="text-3xl font-bold">Buildings</h1>
-
-      {kycStatus !== 'verified' && (
-        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950">
-          <span className="text-xl">🛡️</span>
-          <p className="flex-1">
-            {kycStatus === 'pending'
-              ? 'Identity verification is pending — listings go live after admin approval.'
-              : 'Verify your identity to get listings published faster.'}
-          </p>
-          {kycStatus !== 'pending' && (
-            <Link href="/owner/add" className="font-semibold text-amber-700 underline dark:text-amber-300">
-              Verify now
-            </Link>
-          )}
-        </div>
-      )}
 
       <Link
         href="/owner/add"
@@ -315,5 +299,6 @@ export default function OwnerDashboard() {
         </div>
       </div>
     </div>
+    </OwnerGate>
   );
 }

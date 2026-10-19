@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RoomType } from '@/lib/types';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
-import { getOwnerProfile, submitKyc, uploadListingPhotos, uploadOwnerDocs } from '@/lib/db';
+import { getOwnerProfile, uploadListingPhotos, uploadOwnerDocs } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
+import OwnerGate from '@/components/owner/OwnerGate';
 import { initialDraft, WizardDraft, WizardRoomInput } from '@/components/owner/wizard/types';
 import StepBasics, { validateBasics } from '@/components/owner/wizard/StepBasics';
 import StepRooms, { validateRooms } from '@/components/owner/wizard/StepRooms';
@@ -29,7 +30,6 @@ export default function AddListingWizard() {
   const { user, loading: authLoading } = useAuth();
   const [draft, setDraft] = useState<WizardDraft>(initialDraft());
   const [step, setStep] = useState(0);
-  const [kycStatus, setKycStatus] = useState('none');
   const [stepError, setStepError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -43,12 +43,9 @@ export default function AddListingWizard() {
       return;
     }
     if (user) {
+      // Phone is collected at registration; this is a safety net
       getOwnerProfile(user.id).then((p) => {
-        if (p && !p.phone) {
-          router.replace('/owner/profile?next=/owner/add');
-          return;
-        }
-        if (p) setKycStatus(p.kyc_status);
+        if (p && !p.phone) router.replace('/owner/profile?next=/owner/add');
       });
     }
   }, [user, authLoading, router]);
@@ -76,23 +73,15 @@ export default function AddListingWizard() {
 
   async function handleSubmit() {
     if (!user) return;
-    if (kycStatus !== 'verified' && !draft.idDoc) {
-      setSubmitError('Please upload a government ID to verify your identity.');
-      return;
-    }
     setSubmitting(true);
     setSubmitError('');
     try {
       const sb = getSupabase();
-      let photoUrls: string[] = [];
-      let docPaths: string[] = [];
       if (sb && isSupabaseConfigured()) {
-        photoUrls = await uploadListingPhotos(user.id, draft.photos.map((p) => p.file));
-        docPaths = await uploadOwnerDocs(user.id, [
-          ...draft.proofDocs,
-          ...(draft.idDoc ? [draft.idDoc] : []),
-        ]);
-        if (draft.idDoc) await submitKyc(user.id, docPaths);
+        const photoUrls = await uploadListingPhotos(user.id, draft.photos.map((p) => p.file));
+        // Proof-of-address docs stay with the listing (owner identity was
+        // already verified at registration)
+        await uploadOwnerDocs(user.id, draft.proofDocs);
 
         const amenities = [...new Set([...draft.amenities, ...draft.services])];
         const { data: listing, error } = await sb
@@ -166,6 +155,7 @@ export default function AddListingWizard() {
   }
 
   return (
+    <OwnerGate>
     <div className="mx-auto max-w-2xl px-4 py-6">
       <Link href="/owner" className="text-sm text-zinc-500 hover:underline">← Back to dashboard</Link>
       <h1 className="mt-2 text-2xl font-bold">Add New Building</h1>
@@ -196,11 +186,9 @@ export default function AddListingWizard() {
         {step === 5 && (
           <StepReview
             draft={draft}
-            kycStatus={kycStatus}
             submitting={submitting}
             error={submitError}
             onSubmit={handleSubmit}
-            update={update}
           />
         )}
       </div>
@@ -225,5 +213,6 @@ export default function AddListingWizard() {
         </div>
       )}
     </div>
+    </OwnerGate>
   );
 }

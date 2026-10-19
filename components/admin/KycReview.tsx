@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { OwnerProfile, getPendingKyc, getSignedDocUrl, setKycStatus } from '@/lib/db';
+import { sendVerifiedEmail } from '@/lib/notify';
 
 export default function KycReview() {
   const [profiles, setProfiles] = useState<OwnerProfile[]>([]);
   const [docUrls, setDocUrls] = useState<Record<string, string>>({});
   const [acting, setActing] = useState<string | null>(null);
+  const [emailNote, setEmailNote] = useState('');
 
   useEffect(() => {
     getPendingKyc().then(async (ps) => {
@@ -27,9 +29,25 @@ export default function KycReview() {
 
   async function decide(id: string, status: 'verified' | 'rejected') {
     setActing(id);
+    setEmailNote('');
     try {
       await setKycStatus(id, status);
-      setProfiles((prev) => prev.filter((p) => p.id !== id));
+      setProfiles((prev) => {
+        const target = prev.find((p) => p.id === id);
+        // Email the owner the moment they're verified
+        if (target && status === 'verified') {
+          sendVerifiedEmail(target.email, target.full_name).then((r) => {
+            setEmailNote(
+              r.sent
+                ? `✓ Verification email sent to ${target.email}`
+                : r.reason === 'not-configured'
+                  ? 'Owner verified, but the verification email was skipped (EmailJS not configured — see README).'
+                  : `Owner verified, but the email could not be sent (${r.reason}).`
+            );
+          });
+        }
+        return prev.filter((p) => p.id !== id);
+      });
     } finally {
       setActing(null);
     }
@@ -43,6 +61,11 @@ export default function KycReview() {
       <p className="mt-1 text-sm text-zinc-500">
         {profiles.length} owner{profiles.length === 1 ? '' : 's'} waiting for KYC review.
       </p>
+      {emailNote && (
+        <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+          {emailNote}
+        </p>
+      )}
       <div className="mt-4 space-y-4">
         {profiles.map((p) => (
           <div
@@ -52,7 +75,9 @@ export default function KycReview() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-bold">{p.full_name ?? 'Unnamed owner'}</p>
-                <p className="text-sm text-zinc-500">{p.phone ?? 'No phone'} · {p.role}</p>
+                <p className="text-sm text-zinc-500">
+                  {p.email ?? 'No email'} · {p.phone ?? 'No phone'} · {p.role}
+                </p>
               </div>
               <div className="flex gap-2">
                 <button

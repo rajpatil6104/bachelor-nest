@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getSupabase, isSupabaseConfigured } from './supabase';
+import { getOwnerProfile } from './db';
 
 export type Role = 'owner' | 'tenant' | 'admin';
 
@@ -22,7 +23,7 @@ interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
   demoMode: boolean;
-  signUp: (name: string, email: string, password: string, role: Role) => Promise<AuthResult>;
+  signUp: (name: string, email: string, password: string, role: Role, phone?: string) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   demoSignIn: (role: Role) => void;
@@ -43,13 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data) {
       return { id: data.id, email, name: data.full_name ?? email, role: data.role };
     }
-    let pending: { name: string; role: Role } | null = null;
+    let pending: { name: string; role: Role; phone?: string } | null = null;
     try {
       pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? 'null');
     } catch {}
     const name = pending?.name ?? email.split('@')[0];
     const role = pending?.role ?? 'tenant';
-    await sb.from('profiles').insert({ id: authId, role, full_name: name });
+    await sb.from('profiles').insert({ id: authId, role, full_name: name, email, phone: pending?.phone ?? null });
     try {
       localStorage.removeItem(PENDING_KEY);
     } catch {}
@@ -84,11 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  async function signUp(name: string, email: string, password: string, role: Role): Promise<AuthResult> {
+  async function signUp(name: string, email: string, password: string, role: Role, phone?: string): Promise<AuthResult> {
     const sb = getSupabase();
     if (!sb) return { ok: false, message: 'Connect Supabase to enable real signup, or use a demo login.' };
     try {
-      localStorage.setItem(PENDING_KEY, JSON.stringify({ name, role }));
+      localStorage.setItem(PENDING_KEY, JSON.stringify({ name, role, phone: phone ?? null }));
     } catch {}
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) return { ok: false, message: error.message };
@@ -109,7 +110,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, message: error.message };
     const u = data.session.user;
-    setUser(await ensureProfile(sb, u.id, u.email ?? ''));
+    const authUser = await ensureProfile(sb, u.id, u.email ?? '');
+    // Owners can't log in until an admin verifies their ID
+    if (authUser.role === 'owner') {
+      const profile = await getOwnerProfile(authUser.id);
+      if (profile && profile.kyc_status !== 'verified') {
+        await sb.auth.signOut();
+        setUser(null);
+        return {
+          ok: false,
+          message:
+            profile.kyc_status === 'rejected'
+              ? 'Your owner verification was rejected. Please contact support.'
+              : "Your owner account is pending verification. We'll email you once approved — then you can log in.",
+        };
+      }
+    }
+    setUser(authUser);
     return { ok: true };
   }
 

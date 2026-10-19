@@ -42,12 +42,13 @@ Open http://localhost:3000 — the app runs on built-in demo listings.
    Then also run `supabase/migration_admin_policies.sql` (admin review),
    `supabase/migration_storage.sql` (photo uploads bucket),
    `supabase/migration_room_labels.sql` (named flat spaces),
-   `supabase/migration_messages.sql` (in-app chat), and
-   `supabase/migration_owner_kyc.sql` (rent cycle, KYC fields, private owner-docs bucket).
+   `supabase/migration_messages.sql` (in-app chat),
+   `supabase/migration_owner_kyc.sql` (rent cycle, KYC fields, private owner-docs bucket), and
+   `supabase/migration_profile_email.sql` (owner email on profiles; grandfathers existing owners as verified).
    If you ran the KYC migration before 2026-10-20 and now see `{ code: "42P17" }`,
    run `supabase/migration_fix_admin_recursion.sql` once to fix it.
 3. Go to **Project Settings → API**, copy the **Project URL** and **anon public key**.
-4. Copy `.env.local.example` to `.env.local` and paste the two values.
+4. Copy `.env.example` to `.env.local` and paste the two values.
 5. Restart `npm run dev`. The app now reads/writes the real database.
 
 ### Admin verification panel
@@ -63,18 +64,38 @@ New listings are `pending` until approved at `/admin` (Approve / Reject).
 
 ### Login / signup
 
-Email + password auth is built in (`/login`, `/register`) with role selection
-(owner vs tenant). It activates automatically once `.env.local` is set.
+**Tenants** use email + password (`/login`, `/register`). **Owners** go through a
+verified onboarding:
 
-- New signups create a row in `public.profiles` with the chosen role.
-- Owner pages (`/owner`, `/owner/add`) require an owner account.
-- Without Supabase, use the **demo login** buttons on the login page.
-- For quick testing, turn off email confirmation in Supabase →
-  Authentication → Providers → Email → "Confirm email". Otherwise users must
-  click the confirmation link before first login.
+1. Register with first name, last name, mobile number, email, password (+ confirm).
+2. Enter the 6-digit OTP emailed to them (Supabase sends it automatically).
+3. Upload a government ID (image/PDF) as authentication proof.
+4. Until an admin verifies them at `/admin`, owners **cannot log in** — the login
+   screen tells them verification is pending.
+5. When the admin clicks **Verify**, the owner gets a "you're verified, you can
+   now add your stays" email (see below) and can log in.
+
+- New signups create a row in `public.profiles` with the chosen role, phone and email.
+- Owner pages (`/owner`, `/owner/add`) require a verified owner account.
+- Without Supabase, use the **demo login** buttons on the login page (demo owner bypasses verification).
 - Phone OTP login can be added later via
   `supabase.auth.signInWithOtp({ phone })` once you configure an SMS provider
   (Twilio/MSG91) in the Supabase dashboard.
+- Note: Supabase free tier limits OTP emails per hour — if codes stop arriving
+  while testing, wait a bit and resend.
+
+### Owner verification emails (optional)
+
+When an admin verifies an owner, the app emails them via **EmailJS** (free tier,
+no backend needed). Without it, verification still works — the email is skipped
+and the admin sees a note.
+
+1. Create an account at https://www.emailjs.com and add an **Email service** (Gmail works).
+2. Create an **Email Template** using the variables `{{to_name}}` and `{{to_email}}`,
+   e.g. subject "You're verified on BachelorNest 🎉" and body:
+   "Hi {{to_name}}, your owner account is verified — log in and add your stays!"
+3. Copy the **Service ID**, **Template ID** and **Public Key** into `.env.local`
+   (see `.env.example`) and restart `npm run dev`.
 
 ## Project structure
 

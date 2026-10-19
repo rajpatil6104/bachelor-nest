@@ -28,7 +28,6 @@ export interface WizardDraft {
   services: string[];
   rules: string[];
   customRule: string;
-  idDoc: File | null;
 }
 
 export const initialDraft = (): WizardDraft => ({
@@ -53,7 +52,6 @@ export const initialDraft = (): WizardDraft => ({
   services: [],
   rules: [],
   customRule: '',
-  idDoc: null,
 });
 
 export const inputCls =

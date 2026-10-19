@@ -804,6 +804,7 @@ export interface OwnerProfile {
   role: string;
   full_name: string | null;
   phone: string | null;
+  email: string | null;
   kyc_status: string;
   kyc_docs: string[];
 }
@@ -812,13 +813,13 @@ const DEMO_PROFILE_KEY = 'bn-demo-profile';
 
 function readDemoProfile(): OwnerProfile {
   if (typeof window === 'undefined') {
-    return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, kyc_status: 'none', kyc_docs: [] };
+    return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, email: 'demo@bachelorsnest.app', kyc_status: 'verified', kyc_docs: [] };
   }
   try {
     const raw = localStorage.getItem(DEMO_PROFILE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, kyc_status: 'none', kyc_docs: [] };
+  return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, email: 'demo@bachelorsnest.app', kyc_status: 'verified', kyc_docs: [] };
 }
 
 export async function getOwnerProfile(userId: string): Promise<OwnerProfile | null> {
@@ -826,7 +827,7 @@ export async function getOwnerProfile(userId: string): Promise<OwnerProfile | nu
   if (sb) {
     const { data, error } = await sb
       .from('profiles')
-      .select('id, role, full_name, phone, kyc_status, kyc_docs')
+      .select('id, role, full_name, phone, email, kyc_status, kyc_docs')
       .eq('id', userId)
       .maybeSingle();
     if (error || !data) return null;
@@ -888,7 +889,7 @@ export async function getPendingKyc(): Promise<OwnerProfile[]> {
   if (sb) {
     const { data, error } = await sb
       .from('profiles')
-      .select('id, role, full_name, phone, kyc_status, kyc_docs')
+      .select('id, role, full_name, phone, email, kyc_status, kyc_docs')
       .eq('kyc_status', 'pending')
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -917,4 +918,29 @@ export async function getSignedDocUrl(path: string): Promise<string> {
   const { data, error } = await sb.storage.from('owner-docs').createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
+}
+
+// Upsert used by the owner OTP registration flow (profile may not exist yet).
+// Never touches kyc_status — verification state is only changed by submitKyc
+// (owner) and setKycStatus (admin).
+export async function ensureOwnerProfile(p: {
+  id: string;
+  role: string;
+  full_name: string;
+  phone: string;
+  email: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const { error } = await sb.from('profiles').upsert(
+    {
+      id: p.id,
+      role: p.role,
+      full_name: p.full_name,
+      phone: p.phone,
+      email: p.email,
+    },
+    { onConflict: 'id' }
+  );
+  if (error) throw error;
 }
