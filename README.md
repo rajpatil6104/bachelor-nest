@@ -40,6 +40,17 @@ Open http://localhost:3000 — the app runs on built-in demo listings.
 4. Copy `.env.local.example` to `.env.local` and paste the two values.
 5. Restart `npm run dev`. The app now reads/writes the real database.
 
+### Admin verification panel
+
+New listings are `pending` until approved at `/admin` (Approve / Reject).
+
+- Run `supabase/migration_admin_policies.sql` in the SQL editor (after `schema.sql`)
+  so admins can read and moderate every listing.
+- Make a user an admin: in SQL editor, run
+  `update public.profiles set role = 'admin' where id = '<their-uuid>';`
+  (find the uuid in Authentication → Users).
+- Without Supabase, use the **Demo admin** button on the login page to try it.
+
 ### Login / signup
 
 Email + password auth is built in (`/login`, `/register`) with role selection

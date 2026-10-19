@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { useAuth } from '@/lib/auth';
+import { Role, useAuth } from '@/lib/auth';
 
 function LoginForm() {
   const router = useRouter();
@@ -29,9 +29,9 @@ function LoginForm() {
     router.push(next);
   }
 
-  function handleDemo(role: 'owner' | 'tenant') {
+  function handleDemo(role: Role) {
     demoSignIn(role);
-    router.push(role === 'owner' ? '/owner' : '/');
+    router.push(role === 'owner' ? '/owner' : role === 'admin' ? '/admin' : '/');
   }
 
   const inputCls =
@@ -67,7 +67,7 @@ function LoginForm() {
       {demoMode && (
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
           <p className="text-sm font-medium">No Supabase connected yet — try a demo login:</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={() => handleDemo('tenant')}
               className="flex-1 rounded-xl border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
@@ -79,6 +79,12 @@ function LoginForm() {
               className="flex-1 rounded-xl border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
             >
               🔑 Demo owner
+            </button>
+            <button
+              onClick={() => handleDemo('admin')}
+              className="flex-1 rounded-xl border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+            >
+              🛡️ Demo admin
             </button>
           </div>
         </div>

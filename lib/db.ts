@@ -58,3 +58,31 @@ export async function getOwnerListings(ownerId: string): Promise<Listing[]> {
   // Demo: pretend all mock listings belong to the demo owner
   return MOCK_LISTINGS;
 }
+
+// ---- Admin moderation ----
+
+export async function getPendingListings(): Promise<Listing[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('listings')
+      .select('*, rooms(*)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Listing[];
+  }
+  return MOCK_LISTINGS.filter((l) => l.status === 'pending');
+}
+
+export async function setListingStatus(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('listings').update({ status }).eq('id', id);
+    if (error) throw error;
+  }
+  // Demo mode: the admin page manages local state instead
+}

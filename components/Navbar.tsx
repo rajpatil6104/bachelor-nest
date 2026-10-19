@@ -30,6 +30,11 @@ export default function Navbar() {
                   Dashboard
                 </Link>
               )}
+              {user.role === 'admin' && (
+                <Link href="/admin" className="hover:text-indigo-600">
+                  🛡️ Review
+                </Link>
+              )}
               <span className="hidden text-zinc-500 sm:inline">
                 Hi, {user.name.split(' ')[0]}
                 {user.demo && ' (demo)'}

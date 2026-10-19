@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getSupabase, isSupabaseConfigured } from './supabase';
 
-export type Role = 'owner' | 'tenant';
+export type Role = 'owner' | 'tenant' | 'admin';
 
 export interface AuthUser {
   id: string;
@@ -123,10 +123,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function demoSignIn(role: Role) {
+    const names: Record<Role, string> = {
+      owner: 'Demo Owner',
+      tenant: 'Demo Bachelor',
+      admin: 'Demo Admin',
+    };
+    const emails: Record<Role, string> = {
+      owner: 'owner@demo.in',
+      tenant: 'bachelor@demo.in',
+      admin: 'admin@demo.in',
+    };
+    const ids: Record<Role, string> = {
+      owner: 'owner-1',
+      tenant: 'tenant-1',
+      admin: 'admin-1',
+    };
     const demo: AuthUser = {
-      id: role === 'owner' ? 'owner-1' : 'tenant-1',
-      email: role === 'owner' ? 'owner@demo.in' : 'bachelor@demo.in',
-      name: role === 'owner' ? 'Demo Owner' : 'Demo Bachelor',
+      id: ids[role],
+      email: emails[role],
+      name: names[role],
       role,
       demo: true,
     };

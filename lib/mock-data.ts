@@ -91,4 +91,24 @@ export const MOCK_LISTINGS: Listing[] = [
       { id: 'r9', listing_id: 'demo-4', room_type: 'double', total_beds: 24, occupied_beds: 20, rent_per_bed: 11000, deposit: 11000 },
     ],
   },
+  {
+    id: 'demo-5',
+    owner_id: 'owner-2',
+    type: 'pg',
+    title: 'GreenView PG (awaiting review)',
+    description:
+      'Newly opened PG near Christ University. 5 min walk to campus, mess food included, CCTV secured.',
+    address: 'Hosur Road, near Christ University',
+    city: 'Bengaluru',
+    locality: 'Hosur Road',
+    photos: [],
+    amenities: ['Food included', 'WiFi', 'Power backup', 'Housekeeping'],
+    house_rules: 'No guests after 8 PM. Monthly payment by 5th.',
+    gender_allowed: 'male',
+    status: 'pending',
+    rooms: [
+      { id: 'r10', listing_id: 'demo-5', room_type: 'double', total_beds: 16, occupied_beds: 0, rent_per_bed: 7500, deposit: 7500 },
+      { id: 'r11', listing_id: 'demo-5', room_type: 'triple', total_beds: 12, occupied_beds: 0, rent_per_bed: 6000, deposit: 6000 },
+    ],
+  },
 ];
