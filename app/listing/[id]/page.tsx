@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import AvailabilityBadge from '@/components/AvailabilityBadge';
+import BookVisit from '@/components/BookVisit';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds } from '@/lib/types';
 
@@ -100,16 +101,14 @@ export default async function ListingDetail({
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{listing.house_rules}</p>
 
           {/* Actions */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button className="flex-1 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-700">
-              📅 Book a visit
-            </button>
-            <button className="flex-1 rounded-xl border border-brand-600 px-6 py-3 font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950">
+          <div className="mt-8 space-y-3">
+            <BookVisit listingId={listing.id} />
+            <button className="w-full rounded-xl border border-brand-600 px-6 py-3 font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-500 dark:text-brand-300 dark:hover:bg-brand-950">
               💬 Chat with owner
             </button>
           </div>
           <p className="mt-3 text-center text-xs text-zinc-400">
-            Demo mode — visit booking & chat activate once Supabase auth is connected.
+            Chat activates in a later update — visit booking works now.
           </p>
         </div>
       </div>

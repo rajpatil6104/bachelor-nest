@@ -15,11 +15,12 @@ owners — with **live vacancy availability**. Zero brokerage.
 5. Search with filters — city, budget, property type, sharing type
 6. Listing detail page — rooms table with live bed counts, amenities, rules
 7. Availability badges everywhere ("4 beds available" / "Full")
-8. Book a visit / chat with owner (activates with auth)
+8. Book a visit — date + message, tracked on a "My visits" page with live status
+9. Owner visit-request inbox — accept/decline requests from the dashboard
 
 **Trust**
-9. Listings go live only after admin verification (`status = 'approved'`)
-10. RLS policies so owners only touch their own data
+10. Listings go live only after admin verification (`status = 'approved'`) via `/admin`
+11. RLS policies so owners only touch their own data
 
 ## Quick start (demo mode — no setup needed)
 
@@ -86,8 +87,7 @@ supabase/schema.sql     → Postgres tables + RLS policies
 
 ## Roadmap (v2)
 
-- Phone OTP auth UI + profiles
-- In-app chat & visit booking flow
+- In-app chat with owners
 - Favorites, vacancy alerts (push/email)
 - Reviews from tenants
 - Photo uploads via Supabase Storage

@@ -39,6 +39,11 @@ export default function Navbar() {
                   🛡️ Review
                 </Link>
               )}
+              {user.role === 'tenant' && (
+                <Link href="/visits" className="hover:text-brand-600 dark:hover:text-brand-400">
+                  My visits
+                </Link>
+              )}
               <span className="hidden text-zinc-500 sm:inline">
                 Hi, {user.name.split(' ')[0]}
                 {user.demo && ' (demo)'}

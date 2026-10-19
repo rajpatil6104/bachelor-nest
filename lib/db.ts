@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Listing, SearchFilters } from './types';
+import { Inquiry, Listing, SearchFilters } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 export async function getListings(filters: SearchFilters = {}): Promise<Listing[]> {
@@ -85,4 +85,138 @@ export async function setListingStatus(
     if (error) throw error;
   }
   // Demo mode: the admin page manages local state instead
+}
+
+// ---- Visit inquiries ----
+
+const DEMO_INQ_KEY = 'bn-demo-inquiries';
+
+function readDemoInquiries(): Inquiry[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    return JSON.parse(localStorage.getItem(DEMO_INQ_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function writeDemoInquiries(all: Inquiry[]) {
+  try {
+    localStorage.setItem(DEMO_INQ_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+function attachListingInfo(inq: Inquiry): Inquiry {
+  const l = MOCK_LISTINGS.find((x) => x.id === inq.listing_id);
+  if (l) {
+    inq.listing_title = l.title;
+    inq.listing_locality = l.locality;
+    inq.listing_city = l.city;
+  }
+  return inq;
+}
+
+export async function createInquiry(input: {
+  listing_id: string;
+  tenant_id: string;
+  kind: 'visit' | 'callback';
+  preferred_date?: string;
+  message?: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('inquiries').insert({
+      listing_id: input.listing_id,
+      tenant_id: input.tenant_id,
+      kind: input.kind,
+      status: 'pending',
+      preferred_date: input.preferred_date || null,
+      message: input.message || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const all = readDemoInquiries();
+  all.unshift({
+    id: `demo-inq-${Date.now()}`,
+    listing_id: input.listing_id,
+    tenant_id: input.tenant_id,
+    kind: input.kind,
+    status: 'pending',
+    preferred_date: input.preferred_date || null,
+    message: input.message || null,
+    created_at: new Date().toISOString(),
+  });
+  writeDemoInquiries(all);
+}
+
+export async function getTenantInquiries(tenantId: string): Promise<Inquiry[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('inquiries')
+      .select('*, listings!inner(title, locality, city)')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      listing_id: r.listing_id,
+      tenant_id: r.tenant_id,
+      kind: r.kind,
+      status: r.status,
+      preferred_date: r.preferred_date,
+      message: r.message,
+      created_at: r.created_at,
+      listing_title: r.listings?.title,
+      listing_locality: r.listings?.locality,
+      listing_city: r.listings?.city,
+    }));
+  }
+  return readDemoInquiries()
+    .filter((i) => i.tenant_id === tenantId)
+    .map(attachListingInfo);
+}
+
+export async function getOwnerInquiries(ownerId: string): Promise<Inquiry[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('inquiries')
+      .select('*, listings!inner(title, locality, city, owner_id)')
+      .eq('listings.owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      listing_id: r.listing_id,
+      tenant_id: r.tenant_id,
+      kind: r.kind,
+      status: r.status,
+      preferred_date: r.preferred_date,
+      message: r.message,
+      created_at: r.created_at,
+      listing_title: r.listings?.title,
+      listing_locality: r.listings?.locality,
+      listing_city: r.listings?.city,
+    }));
+  }
+  // Demo: all mock listings belong to the demo owner
+  return readDemoInquiries().map(attachListingInfo);
+}
+
+export async function setInquiryStatus(
+  id: string,
+  status: 'accepted' | 'rejected' | 'done'
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('inquiries').update({ status }).eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const all = readDemoInquiries().map((i) =>
+    i.id === id ? { ...i, status } : i
+  );
+  writeDemoInquiries(all);
 }

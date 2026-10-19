@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getOwnerListings } from '@/lib/db';
+import { getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import {
+  Inquiry,
   Listing,
   ROOM_LABELS,
   TYPE_LABELS,
@@ -18,7 +19,9 @@ export default function OwnerDashboard() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'owner')) {
@@ -28,10 +31,13 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     if (!user || user.role !== 'owner') return;
-    getOwnerListings(user.id).then((data) => {
-      setListings(data);
-      setLoading(false);
-    });
+    Promise.all([getOwnerListings(user.id), getOwnerInquiries(user.id)]).then(
+      ([l, inq]) => {
+        setListings(l);
+        setInquiries(inq);
+        setLoading(false);
+      }
+    );
   }, [user]);
 
   const adjustOccupied = async (listingId: string, roomId: string, delta: number) => {
@@ -63,8 +69,17 @@ export default function OwnerDashboard() {
     }
   };
 
-  if (authLoading || loading) return <p className="p-8 text-zinc-500">Loading your listings…</p>;
+  const moderateInquiry = async (id: string, status: 'accepted' | 'rejected') => {
+    setActing(id);
+    try {
+      await setInquiryStatus(id, status);
+      setInquiries((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+    } finally {
+      setActing(null);
+    }
+  };
 
+  if (authLoading || loading) return <p className="p-8 text-zinc-500">Loading your listings…</p>;
   if (!user || user.role !== 'owner') {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
@@ -106,6 +121,65 @@ export default function OwnerDashboard() {
           <Link href="/owner/add" className="text-brand-600 hover:underline">
             Add your first property
           </Link>
+        </div>
+      )}
+
+      {/* Visit requests */}
+      {inquiries.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold">
+            📅 Visit requests{' '}
+            <span className="ml-1 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-200">
+              {inquiries.filter((i) => i.status === 'pending').length} pending
+            </span>
+          </h2>
+          <div className="mt-3 space-y-3">
+            {inquiries.map((inq) => (
+              <div
+                key={inq.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="text-sm">
+                  <p className="font-semibold">{inq.listing_title}</p>
+                  <p className="text-zinc-500">
+                    {inq.preferred_date
+                      ? `Wants to visit on ${inq.preferred_date}`
+                      : 'No date specified'}
+                    {inq.message ? ` · “${inq.message}”` : ''}
+                  </p>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      inq.status === 'pending'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                        : inq.status === 'accepted'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                    }`}
+                  >
+                    {inq.status}
+                  </span>
+                </div>
+                {inq.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => moderateInquiry(inq.id, 'rejected')}
+                      disabled={acting === inq.id}
+                      className="rounded-full border border-red-300 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:hover:bg-red-950"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => moderateInquiry(inq.id, 'accepted')}
+                      disabled={acting === inq.id}
+                      className="rounded-full bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {acting === inq.id ? 'Saving…' : 'Accept'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

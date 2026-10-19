@@ -37,6 +37,24 @@ export interface SearchFilters {
   roomType?: RoomType | '';
 }
 
+export type InquiryKind = 'visit' | 'callback';
+export type InquiryStatus = 'pending' | 'accepted' | 'rejected' | 'done';
+
+export interface Inquiry {
+  id: string;
+  listing_id: string;
+  tenant_id: string;
+  kind: InquiryKind;
+  status: InquiryStatus;
+  preferred_date: string | null;
+  message: string | null;
+  created_at: string;
+  listing_title?: string;
+  listing_locality?: string;
+  listing_city?: string;
+  tenant_name?: string;
+}
+
 export const availableBeds = (room: Room) => room.total_beds - room.occupied_beds;
 
 export const listingAvailableBeds = (listing: Listing) =>
