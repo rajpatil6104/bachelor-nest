@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, SearchFilters, VacancyAlert } from './types';
+import { Inquiry, Listing, Review, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 export async function getListings(filters: SearchFilters = {}): Promise<Listing[]> {
@@ -16,9 +16,9 @@ export async function getListings(filters: SearchFilters = {}): Promise<Listing[
       listings = listings.filter((l) => l.rooms.some((r) => r.rent_per_bed <= filters.maxBudget!));
     if (filters.roomType)
       listings = listings.filter((l) => l.rooms.some((r) => r.room_type === filters.roomType));
-    return listings;
+    return withLiveRatings(sb, listings);
   }
-  return filterMock(filters);
+  return withDemoRatings(filterMock(filters));
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -30,9 +30,11 @@ export async function getListing(id: string): Promise<Listing | null> {
       .eq('id', id)
       .single();
     if (error) return null;
-    return data as Listing;
+    const [rated] = await withLiveRatings(sb, [data as Listing]);
+    return rated;
   }
-  return MOCK_LISTINGS.find((l) => l.id === id) ?? null;
+  const found = MOCK_LISTINGS.find((l) => l.id === id) ?? null;
+  return found ? withDemoRatings([found])[0] : null;
 }
 
 function filterMock(filters: SearchFilters): Listing[] {
@@ -412,4 +414,164 @@ export async function setInquiryStatus(
     i.id === id ? { ...i, status } : i
   );
   writeDemoInquiries(all);
+}
+
+// ---- Reviews ----
+
+const DEMO_REV_KEY = 'bn-demo-reviews';
+
+const DEMO_SEED_REVIEWS: Review[] = [
+  {
+    id: 'seed-r1', listing_id: 'demo-1', tenant_id: 'tenant-9', rating: 4,
+    comment: 'Good food and rooms are cleaned daily. Metro is a 5-minute walk.',
+    created_at: '2026-10-05T10:00:00Z',
+  },
+  {
+    id: 'seed-r2', listing_id: 'demo-1', tenant_id: 'tenant-8', rating: 5,
+    comment: 'Owner is very helpful, no unnecessary rules. Recommended!',
+    created_at: '2026-10-12T10:00:00Z',
+  },
+  {
+    id: 'seed-r3', listing_id: 'demo-4', tenant_id: 'tenant-7', rating: 5,
+    comment: 'Premium feel, great community vibe with weekend events.',
+    created_at: '2026-10-10T10:00:00Z',
+  },
+];
+
+function readDemoReviews(): Review[] {
+  if (typeof window === 'undefined') return DEMO_SEED_REVIEWS;
+  try {
+    const raw = localStorage.getItem(DEMO_REV_KEY);
+    const saved: Review[] = raw ? JSON.parse(raw) : [];
+    const ids = new Set(saved.map((r) => r.id));
+    return [...saved, ...DEMO_SEED_REVIEWS.filter((r) => !ids.has(r.id))];
+  } catch {
+    return DEMO_SEED_REVIEWS;
+  }
+}
+
+function writeDemoReviews(reviews: Review[]) {
+  if (typeof window === 'undefined') return;
+  // Only persist user-written reviews; seeds are baked in
+  const seedIds = new Set(DEMO_SEED_REVIEWS.map((r) => r.id));
+  localStorage.setItem(
+    DEMO_REV_KEY,
+    JSON.stringify(reviews.filter((r) => !seedIds.has(r.id)))
+  );
+}
+
+export async function getReviews(listingId: string): Promise<Review[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('reviews')
+      .select('*')
+      .eq('listing_id', listingId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Review[];
+  }
+  return readDemoReviews()
+    .filter((r) => r.listing_id === listingId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+export async function getMyReview(
+  listingId: string,
+  tenantId: string
+): Promise<Review | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb
+      .from('reviews')
+      .select('*')
+      .eq('listing_id', listingId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    return (data as Review | null) ?? null;
+  }
+  return (
+    readDemoReviews().find(
+      (r) => r.listing_id === listingId && r.tenant_id === tenantId
+    ) ?? null
+  );
+}
+
+export async function submitReview(
+  listingId: string,
+  tenantId: string,
+  rating: number,
+  comment: string
+): Promise<void> {
+  if (rating < 1 || rating > 5) throw new Error('Rating must be 1–5');
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('reviews').upsert(
+      {
+        listing_id: listingId,
+        tenant_id: tenantId,
+        rating,
+        comment: comment.trim() || null,
+      },
+      { onConflict: 'listing_id,tenant_id' }
+    );
+    if (error) throw error;
+    return;
+  }
+  const all = readDemoReviews();
+  const existing = all.find(
+    (r) => r.listing_id === listingId && r.tenant_id === tenantId
+  );
+  if (existing) {
+    existing.rating = rating;
+    existing.comment = comment.trim() || null;
+  } else {
+    all.unshift({
+      id: `demo-r-${Date.now()}`,
+      listing_id: listingId,
+      tenant_id: tenantId,
+      rating,
+      comment: comment.trim() || null,
+      created_at: new Date().toISOString(),
+    });
+  }
+  writeDemoReviews(all);
+}
+
+function withDemoRatings(listings: Listing[]): Listing[] {
+  const all = readDemoReviews();
+  return listings.map((l) => {
+    const rs = all.filter((r) => r.listing_id === l.id);
+    if (!rs.length) return l; // keep mock avg_rating
+    const avg = rs.reduce((s, r) => s + r.rating, 0) / rs.length;
+    return {
+      ...l,
+      avg_rating: Math.round(avg * 10) / 10,
+      review_count: rs.length,
+    };
+  });
+}
+
+async function withLiveRatings(sb: any, listings: Listing[]): Promise<Listing[]> {
+  const ids = listings.map((l) => l.id);
+  if (!ids.length) return listings;
+  const { data } = await sb
+    .from('reviews')
+    .select('listing_id, rating')
+    .in('listing_id', ids);
+  const map = new Map<string, number[]>();
+  for (const r of (data ?? []) as { listing_id: string; rating: number }[]) {
+    if (!map.has(r.listing_id)) map.set(r.listing_id, []);
+    map.get(r.listing_id)!.push(r.rating);
+  }
+  return listings.map((l) => {
+    const rs = map.get(l.id) ?? [];
+    if (!rs.length) return { ...l, avg_rating: undefined, review_count: 0 };
+    const avg = rs.reduce((s, r) => s + r, 0) / rs.length;
+    return {
+      ...l,
+      avg_rating: Math.round(avg * 10) / 10,
+      review_count: rs.length,
+    };
+  });
 }

@@ -101,3 +101,12 @@ export const AMENITY_OPTIONS = [
   'Hot water',
   'Furnished',
 ];
+
+export interface Review {
+  id: string;
+  listing_id: string;
+  tenant_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}

@@ -5,6 +5,7 @@ import AvailabilityBadge from '@/components/AvailabilityBadge';
 import BookVisit from '@/components/BookVisit';
 import FavoriteButton from '@/components/FavoriteButton';
 import PhotoGallery from '@/components/PhotoGallery';
+import ReviewsSection from '@/components/ReviewsSection';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds } from '@/lib/types';
 
@@ -115,6 +116,8 @@ export default async function ListingDetail({
           </p>
         </div>
       </div>
+
+      <ReviewsSection listingId={listing.id} />
     </div>
   );
 }
