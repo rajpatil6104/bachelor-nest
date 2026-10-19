@@ -25,9 +25,16 @@ export default function Navbar() {
           </span>
         </Link>
         <div className="flex items-center gap-3 text-sm font-medium">
-          <Link href="/search" className="hover:text-brand-600 dark:hover:text-brand-400">
-            Find a stay
-          </Link>
+          {user?.role !== 'owner' && (
+            <Link href="/search" className="hover:text-brand-600 dark:hover:text-brand-400">
+              Find a stay
+            </Link>
+          )}
+          {user?.role === 'owner' && (
+            <Link href="/owner/add" className="hover:text-brand-600 dark:hover:text-brand-400">
+              + Add listing
+            </Link>
+          )}
           {loading ? null : user ? (
             <>
               {user.role === 'owner' && (

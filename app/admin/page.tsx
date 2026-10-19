@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getPendingListings, setListingStatus } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
+import KycReview from '@/components/admin/KycReview';
 import {
   Listing,
   ROOM_LABELS,
@@ -70,6 +71,8 @@ export default function AdminPage() {
         {listings.length} propert{listings.length === 1 ? 'y' : 'ies'} waiting for verification.
         Approved listings go live instantly.
       </p>
+
+      <KycReview />
 
       {listings.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-12 text-center">

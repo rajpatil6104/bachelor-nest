@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ListingCard from '@/components/ListingCard';
+import OwnerRedirect from '@/components/OwnerRedirect';
 import { getListings } from '@/lib/db';
 
 export default async function Home() {
@@ -7,6 +8,7 @@ export default async function Home() {
 
   return (
     <div>
+      <OwnerRedirect />
       {/* Hero */}
       <section className="bg-gradient-to-br from-navy-900 via-brand-800 to-brand-600 px-4 py-16 text-white sm:py-24">
         <div className="mx-auto max-w-4xl text-center">

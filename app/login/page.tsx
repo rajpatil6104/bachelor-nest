@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
@@ -9,12 +9,19 @@ import { Role, useAuth } from '@/lib/auth';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, demoSignIn, demoMode } = useAuth();
+  const { signIn, demoSignIn, demoMode, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const next = searchParams.get('next') ?? '/';
+
+  // Owners and admins land on their dashboards, not the browse home
+  useEffect(() => {
+    if (user && next === '/') {
+      router.replace(user.role === 'owner' ? '/owner' : user.role === 'admin' ? '/admin' : '/');
+    }
+  }, [user, next, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +33,8 @@ function LoginForm() {
       setError(res.message ?? 'Login failed');
       return;
     }
-    router.push(next);
+    if (next !== '/') router.push(next);
+    // when next === '/', the effect above routes by role once the session loads
   }
 
   function handleDemo(role: Role) {

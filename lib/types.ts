@@ -29,6 +29,7 @@ export interface Listing {
   rooms: Room[];
   avg_rating?: number;
   review_count?: number;
+  rent_cycle?: string;
   created_at?: string;
 }
 
@@ -101,6 +102,53 @@ export const AMENITY_OPTIONS = [
   'Gym',
   'Hot water',
   'Furnished',
+];
+
+// Categorized amenities for the owner listing wizard (ManagR-style)
+export const AMENITY_CATEGORIES: { title: string; items: string[] }[] = [
+  {
+    title: 'Safety',
+    items: ['CCTV', 'Security Guard', 'Gated Society', 'Intercom'],
+  },
+  {
+    title: 'Recreation',
+    items: ['Gym', 'Swimming Pool', 'Clubhouse', 'Garden / Terrace'],
+  },
+  {
+    title: 'Convenience',
+    items: ['Lift / Elevator', 'Power backup', 'RO Water', 'Housekeeping'],
+  },
+  {
+    title: 'Parking',
+    items: ['2-Wheeler Parking', '4-Wheeler Parking'],
+  },
+  {
+    title: 'Room comfort',
+    items: ['AC', 'Furnished', 'Hot water', 'WiFi', 'Food included', 'Laundry', 'TV', 'Fridge'],
+  },
+];
+
+export const SERVICE_OPTIONS = [
+  { id: 'Cleaning', desc: 'Regular housekeeping' },
+  { id: 'Meals', desc: 'Food options' },
+  { id: 'Laundry', desc: 'Washing facilities' },
+  { id: 'WiFi', desc: 'Internet included' },
+  { id: 'RO Water', desc: 'Drinking water provided' },
+];
+
+export const RULE_CHIPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Lifestyle',
+    items: ['No drinking', 'No smoking', 'Non-veg Not Allowed', 'Non-veg Allowed'],
+  },
+  {
+    title: 'Guest policy',
+    items: ['No guests', 'No overnight stays', 'Same-gender guests only', 'No male guests', 'No female guests'],
+  },
+  {
+    title: 'Curfew',
+    items: ['No curfew', 'Gate closes by 10 PM', 'Gate closes by 11 PM'],
+  },
 ];
 
 export interface Review {

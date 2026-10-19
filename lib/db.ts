@@ -796,3 +796,125 @@ export async function getUnreadCount(me: string): Promise<number> {
   }
   return readDemoMessages().filter((m) => m.receiver_id === me && !m.read_at).length;
 }
+
+// ---- Owner profiles & KYC ----
+
+export interface OwnerProfile {
+  id: string;
+  role: string;
+  full_name: string | null;
+  phone: string | null;
+  kyc_status: string;
+  kyc_docs: string[];
+}
+
+const DEMO_PROFILE_KEY = 'bn-demo-profile';
+
+function readDemoProfile(): OwnerProfile {
+  if (typeof window === 'undefined') {
+    return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, kyc_status: 'none', kyc_docs: [] };
+  }
+  try {
+    const raw = localStorage.getItem(DEMO_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { id: 'demo-owner', role: 'owner', full_name: 'Demo Owner', phone: null, kyc_status: 'none', kyc_docs: [] };
+}
+
+export async function getOwnerProfile(userId: string): Promise<OwnerProfile | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('id, role, full_name, phone, kyc_status, kyc_docs')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as OwnerProfile;
+  }
+  const p = readDemoProfile();
+  return userId === 'demo-owner' ? p : null;
+}
+
+export async function updateOwnerProfile(
+  userId: string,
+  patch: { full_name?: string; phone?: string }
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('profiles').update(patch).eq('id', userId);
+    if (error) throw error;
+    return;
+  }
+  const p = readDemoProfile();
+  localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify({ ...p, ...patch }));
+}
+
+export async function uploadOwnerDocs(ownerId: string, files: File[]): Promise<string[]> {
+  const sb = getSupabase();
+  if (!sb) return files.map((f) => URL.createObjectURL(f));
+  const paths: string[] = [];
+  for (const file of files) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${ownerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await sb.storage
+      .from('owner-docs')
+      .upload(path, file, { contentType: file.type || 'image/jpeg' });
+    if (error) throw error;
+    paths.push(path);
+  }
+  return paths;
+}
+
+export async function submitKyc(userId: string, docPaths: string[]): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb
+      .from('profiles')
+      .update({ kyc_status: 'pending', kyc_docs: docPaths })
+      .eq('id', userId);
+    if (error) throw error;
+    return;
+  }
+  const p = readDemoProfile();
+  localStorage.setItem(
+    DEMO_PROFILE_KEY,
+    JSON.stringify({ ...p, kyc_status: 'pending', kyc_docs: docPaths })
+  );
+}
+
+export async function getPendingKyc(): Promise<OwnerProfile[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('id, role, full_name, phone, kyc_status, kyc_docs')
+      .eq('kyc_status', 'pending')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as OwnerProfile[];
+  }
+  const p = readDemoProfile();
+  return p.kyc_status === 'pending' ? [p] : [];
+}
+
+export async function setKycStatus(userId: string, status: 'verified' | 'rejected'): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('profiles').update({ kyc_status: status }).eq('id', userId);
+    if (error) throw error;
+    return;
+  }
+  const p = readDemoProfile();
+  if (p.id === userId) {
+    localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify({ ...p, kyc_status: status }));
+  }
+}
+
+export async function getSignedDocUrl(path: string): Promise<string> {
+  const sb = getSupabase();
+  if (!sb) return path; // demo: already an object URL
+  const { data, error } = await sb.storage.from('owner-docs').createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
