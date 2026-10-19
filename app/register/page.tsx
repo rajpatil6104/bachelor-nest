@@ -48,6 +48,15 @@ export default function RegisterPage() {
     return null;
   }
 
+  function friendlyOtpError(message: string): string {
+    // Supabase returns a raw "HTTP 504" when its email send times out —
+    // almost always a misconfigured custom SMTP server.
+    if (/504/.test(message)) {
+      return 'The email service timed out (HTTP 504). This usually means the custom SMTP settings in Supabase (Project Settings → Auth → SMTP Settings) are wrong — double-check the Gmail App Password (no spaces) and try again.';
+    }
+    return message;
+  }
+
   async function handleDetails(e: React.FormEvent) {
     e.preventDefault();
     const err = validateDetails();
@@ -88,7 +97,7 @@ export default function RegisterPage() {
     });
     setBusy(false);
     if (error) {
-      setError(error.message);
+      setError(friendlyOtpError(error.message));
       return;
     }
     setStep('otp');
@@ -157,7 +166,7 @@ export default function RegisterPage() {
     setBusy(true);
     const { error } = await sb.auth.signInWithOtp({ email: email.trim() });
     setBusy(false);
-    if (error) setError(error.message);
+    if (error) setError(friendlyOtpError(error.message));
     else setNotice('Code resent — check your inbox (and spam folder).');
   }
 
