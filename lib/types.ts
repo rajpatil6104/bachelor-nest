@@ -99,6 +99,27 @@ export interface ListingStats {
   avgRating: number | null;
 }
 
+export interface Agreement {
+  id: string;
+  listing_id: string;
+  owner_id: string;
+  owner_name: string;
+  listing_title: string;
+  property_address: string;
+  room_label: string | null;
+  tenant_name: string;
+  tenant_email: string;
+  tenant_phone: string | null;
+  monthly_rent: number;
+  deposit: number;
+  start_date: string; // yyyy-mm-dd
+  duration_months: number;
+  terms: string | null;
+  status: 'sent' | 'accepted';
+  created_at: string;
+  accepted_at: string | null;
+}
+
 export interface VacancyAlert {
   id: string;
   tenant_id: string;

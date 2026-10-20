@@ -89,3 +89,15 @@ body {
 .bn-pin-picker::after {
   border-top-color: #dc2626;
 }
+
+/* Printing (agreement PDF): hide the app chrome, keep the document */
+@media print {
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}

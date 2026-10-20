@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
+import { Agreement, Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 
@@ -1352,4 +1352,116 @@ export async function getOwnerStats(
   }
   for (const id of Object.keys(viewsMap)) ensure(id);
   return out;
+}
+
+// ---- Rental agreements ----
+
+const DEMO_AGR_KEY = 'bn-demo-agreements';
+
+function readDemoAgreements(): Agreement[] {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_AGR_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+function writeDemoAgreements(all: Agreement[]) {
+  localStorage.setItem(DEMO_AGR_KEY, JSON.stringify(all));
+}
+
+export type AgreementInput = Omit<
+  Agreement,
+  'id' | 'status' | 'created_at' | 'accepted_at'
+>;
+
+export async function createAgreement(input: AgreementInput): Promise<Agreement> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('agreements')
+      .insert({ ...input, status: 'sent' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as Agreement;
+  }
+  const agr: Agreement = {
+    ...input,
+    id: `demo-agr-${Date.now()}`,
+    status: 'sent',
+    created_at: new Date().toISOString(),
+    accepted_at: null,
+  };
+  writeDemoAgreements([agr, ...readDemoAgreements()]);
+  return agr;
+}
+
+export async function getAgreement(id: string): Promise<Agreement | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb.from('agreements').select('*').eq('id', id).single();
+    return (data as Agreement) ?? null;
+  }
+  return readDemoAgreements().find((a) => a.id === id) ?? null;
+}
+
+export async function getOwnerAgreements(ownerId: string): Promise<Agreement[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('agreements')
+      .select('*')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Agreement[];
+  }
+  return readDemoAgreements().filter((a) => a.owner_id === ownerId);
+}
+
+// Agreements addressed to this email (the tenant's account email).
+export async function getTenantAgreements(email: string): Promise<Agreement[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('agreements')
+      .select('*')
+      .ilike('tenant_email', email)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Agreement[];
+  }
+  const lower = email.toLowerCase();
+  return readDemoAgreements().filter(
+    (a) => a.tenant_email.toLowerCase() === lower
+  );
+}
+
+export async function acceptAgreement(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb
+      .from('agreements')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  writeDemoAgreements(
+    readDemoAgreements().map((a) =>
+      a.id === id
+        ? { ...a, status: 'accepted' as const, accepted_at: new Date().toISOString() }
+        : a
+    )
+  );
+}
+
+export async function deleteAgreement(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('agreements').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  writeDemoAgreements(readDemoAgreements().filter((a) => a.id !== id));
 }

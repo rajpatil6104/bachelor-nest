@@ -54,10 +54,12 @@ export default function Navbar() {
     { href: '/search', label: '🔍 Find a stay', show: user?.role !== 'owner' },
     { href: '/owner', label: '📊 Dashboard', show: user?.role === 'owner' },
     { href: '/owner/add', label: '➕ Add listing', show: user?.role === 'owner' },
+    { href: '/owner/agreements', label: '📄 Agreements', show: user?.role === 'owner' },
     { href: '/admin', label: '🛡️ Review listings', show: user?.role === 'admin' },
     { href: '/visits', label: '📅 My visits', show: user?.role === 'tenant' },
     { href: '/saved', label: '❤️ Saved', show: user?.role === 'tenant' },
     { href: '/alerts', label: '🔔 Alerts', show: user?.role === 'tenant' },
+    { href: '/agreements', label: '📄 My agreements', show: user?.role === 'tenant' },
     { href: '/chat', label: '💬 Chats', show: !!user && user.role !== 'admin', badge: unread },
   ];
 
