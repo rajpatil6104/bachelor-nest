@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Agreement, Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
+import { Agreement, Expense, ExpenseGroup, ExpenseMember, Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, Settlement, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 
@@ -1464,4 +1464,250 @@ export async function deleteAgreement(id: string): Promise<void> {
     return;
   }
   writeDemoAgreements(readDemoAgreements().filter((a) => a.id !== id));
+}
+
+// ---- Expense splitter ----
+
+interface DemoExpenseStore {
+  groups: ExpenseGroup[];
+  members: ExpenseMember[];
+  expenses: Expense[];
+  settlements: Settlement[];
+}
+
+const DEMO_EXP_KEY = 'bn-demo-expenses';
+
+function readDemoExpenseStore(): DemoExpenseStore {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DEMO_EXP_KEY) ?? '{}');
+    return {
+      groups: raw.groups ?? [],
+      members: raw.members ?? [],
+      expenses: raw.expenses ?? [],
+      settlements: raw.settlements ?? [],
+    };
+  } catch {
+    return { groups: [], members: [], expenses: [], settlements: [] };
+  }
+}
+function writeDemoExpenseStore(store: DemoExpenseStore) {
+  localStorage.setItem(DEMO_EXP_KEY, JSON.stringify(store));
+}
+
+export async function getExpenseGroups(userId: string): Promise<ExpenseGroup[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('expense_groups')
+      .select('*')
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as ExpenseGroup[];
+  }
+  return readDemoExpenseStore().groups.filter((g) => g.created_by === userId);
+}
+
+export async function createExpenseGroup(
+  userId: string,
+  name: string,
+  creatorName: string
+): Promise<ExpenseGroup> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('expense_groups')
+      .insert({ name, created_by: userId })
+      .select('*')
+      .single();
+    if (error) throw error;
+    const group = data as ExpenseGroup;
+    await sb
+      .from('expense_members')
+      .insert({ group_id: group.id, name: creatorName });
+    return group;
+  }
+  const store = readDemoExpenseStore();
+  const group: ExpenseGroup = {
+    id: `demo-grp-${Date.now()}`,
+    name,
+    created_by: userId,
+    created_at: new Date().toISOString(),
+  };
+  store.groups.unshift(group);
+  store.members.push({
+    id: `demo-mem-${Date.now()}`,
+    group_id: group.id,
+    name: creatorName,
+    created_at: new Date().toISOString(),
+  });
+  writeDemoExpenseStore(store);
+  return group;
+}
+
+export async function deleteExpenseGroup(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('expense_groups').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const store = readDemoExpenseStore();
+  store.groups = store.groups.filter((g) => g.id !== id);
+  store.members = store.members.filter((m) => m.group_id !== id);
+  store.expenses = store.expenses.filter((e) => e.group_id !== id);
+  store.settlements = store.settlements.filter((s) => s.group_id !== id);
+  writeDemoExpenseStore(store);
+}
+
+export interface ExpenseGroupDetail {
+  group: ExpenseGroup;
+  members: ExpenseMember[];
+  expenses: Expense[];
+  settlements: Settlement[];
+}
+
+export async function getExpenseGroupDetail(
+  groupId: string
+): Promise<ExpenseGroupDetail | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data: group } = await sb
+      .from('expense_groups')
+      .select('*')
+      .eq('id', groupId)
+      .single();
+    if (!group) return null;
+    const [members, expenses, settlements] = await Promise.all([
+      sb.from('expense_members').select('*').eq('group_id', groupId).order('created_at'),
+      sb
+        .from('expenses')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false }),
+      sb
+        .from('settlements')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false }),
+    ]);
+    return {
+      group: group as ExpenseGroup,
+      members: (members.data ?? []) as ExpenseMember[],
+      expenses: (expenses.data ?? []) as Expense[],
+      settlements: (settlements.data ?? []) as Settlement[],
+    };
+  }
+  const store = readDemoExpenseStore();
+  const group = store.groups.find((g) => g.id === groupId);
+  if (!group) return null;
+  return {
+    group,
+    members: store.members.filter((m) => m.group_id === groupId),
+    expenses: store.expenses
+      .filter((e) => e.group_id === groupId)
+      .slice()
+      .reverse(),
+    settlements: store.settlements
+      .filter((s) => s.group_id === groupId)
+      .slice()
+      .reverse(),
+  };
+}
+
+export async function addExpenseMember(
+  groupId: string,
+  name: string
+): Promise<ExpenseMember> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('expense_members')
+      .insert({ group_id: groupId, name })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as ExpenseMember;
+  }
+  const store = readDemoExpenseStore();
+  const member: ExpenseMember = {
+    id: `demo-mem-${Date.now()}`,
+    group_id: groupId,
+    name,
+    created_at: new Date().toISOString(),
+  };
+  store.members.push(member);
+  writeDemoExpenseStore(store);
+  return member;
+}
+
+export async function addExpense(input: {
+  group_id: string;
+  title: string;
+  amount: number;
+  paid_by: string;
+  category?: string;
+}): Promise<Expense> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('expenses')
+      .insert({ ...input, category: input.category || null })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as Expense;
+  }
+  const store = readDemoExpenseStore();
+  const expense: Expense = {
+    id: `demo-exp-${Date.now()}`,
+    group_id: input.group_id,
+    title: input.title,
+    amount: input.amount,
+    paid_by: input.paid_by,
+    category: input.category || null,
+    created_at: new Date().toISOString(),
+  };
+  store.expenses.push(expense);
+  writeDemoExpenseStore(store);
+  return expense;
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('expenses').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const store = readDemoExpenseStore();
+  store.expenses = store.expenses.filter((e) => e.id !== id);
+  writeDemoExpenseStore(store);
+}
+
+export async function addSettlement(input: {
+  group_id: string;
+  from_member: string;
+  to_member: string;
+  amount: number;
+}): Promise<Settlement> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('settlements')
+      .insert(input)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as Settlement;
+  }
+  const store = readDemoExpenseStore();
+  const settlement: Settlement = {
+    id: `demo-set-${Date.now()}`,
+    ...input,
+    created_at: new Date().toISOString(),
+  };
+  store.settlements.push(settlement);
+  writeDemoExpenseStore(store);
+  return settlement;
 }

@@ -60,6 +60,7 @@ export default function Navbar() {
     { href: '/saved', label: '❤️ Saved', show: user?.role === 'tenant' },
     { href: '/alerts', label: '🔔 Alerts', show: user?.role === 'tenant' },
     { href: '/agreements', label: '📄 My agreements', show: user?.role === 'tenant' },
+    { href: '/expenses', label: '🧾 Expenses', show: user?.role === 'tenant' },
     { href: '/chat', label: '💬 Chats', show: !!user && user.role !== 'admin', badge: unread },
   ];
 

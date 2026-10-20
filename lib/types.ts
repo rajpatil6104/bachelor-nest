@@ -120,6 +120,48 @@ export interface Agreement {
   accepted_at: string | null;
 }
 
+export interface ExpenseGroup {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ExpenseMember {
+  id: string;
+  group_id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  group_id: string;
+  title: string;
+  amount: number;
+  paid_by: string; // ExpenseMember id
+  category: string | null;
+  created_at: string;
+}
+
+export interface Settlement {
+  id: string;
+  group_id: string;
+  from_member: string;
+  to_member: string;
+  amount: number;
+  created_at: string;
+}
+
+export const EXPENSE_CATEGORIES = [
+  'Rent',
+  'Groceries',
+  'Utilities',
+  'Food',
+  'Cleaning',
+  'Other',
+] as const;
+
 export interface VacancyAlert {
   id: string;
   tenant_id: string;
