@@ -15,6 +15,7 @@ function SearchResults() {
   const [loading, setLoading] = useState(true);
   const [alertSaved, setAlertSaved] = useState(false);
   const [alertBusy, setAlertBusy] = useState(false);
+  const [alertError, setAlertError] = useState('');
 
   const [city, setCity] = useState(params.get('city') ?? '');
   const [maxBudget, setMaxBudget] = useState(params.get('maxBudget') ?? '');
@@ -42,6 +43,7 @@ function SearchResults() {
     }
     if (user.role !== 'tenant' || !city.trim()) return;
     setAlertBusy(true);
+    setAlertError('');
     try {
       await createAlert(user.id, {
         city: city.trim(),
@@ -50,6 +52,8 @@ function SearchResults() {
       });
       setAlertSaved(true);
       setTimeout(() => setAlertSaved(false), 3500);
+    } catch {
+      setAlertError('Could not save the alert. Please try again.');
     } finally {
       setAlertBusy(false);
     }
@@ -117,6 +121,7 @@ function SearchResults() {
           {alertSaved ? '🔔 Alert saved!' : '🔔 Alert me about new stays'}
         </button>
       </div>
+      {alertError && <p className="mt-2 text-right text-sm text-red-600">{alertError}</p>}
 
       {loading ? (
         <p className="mt-8 text-zinc-500">Searching…</p>

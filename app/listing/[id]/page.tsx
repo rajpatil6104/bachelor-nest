@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import AvailabilityBadge from '@/components/AvailabilityBadge';
@@ -8,10 +9,28 @@ import FavoriteButton from '@/components/FavoriteButton';
 import PhotoGallery from '@/components/PhotoGallery';
 import ReviewsSection from '@/components/ReviewsSection';
 import { getListing } from '@/lib/db';
-import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds } from '@/lib/types';
+import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds, minRent } from '@/lib/types';
 
 // This page shows live vacancy data — allow it to block on request-time data
 export const instant = false;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const listing = await getListing(id);
+  if (!listing) return { title: 'Stay not found' };
+  const available = listingAvailableBeds(listing);
+  const rent = minRent(listing);
+  return {
+    title: `${listing.title} — ${TYPE_LABELS[listing.type]} in ${listing.city}`,
+    description: `${TYPE_LABELS[listing.type]} in ${listing.locality}, ${listing.city}. ${
+      available > 0 ? `${available} bed${available === 1 ? '' : 's'} available now` : 'Currently full'
+    }${rent > 0 ? `, rent from ₹${rent.toLocaleString('en-IN')}/month` : ''}. Bachelor-friendly, zero brokerage — contact the owner directly on BachelorNest.`,
+  };
+}
 
 export default async function ListingDetail({
   params,
@@ -62,7 +81,7 @@ export default async function ListingDetail({
               <h2 className="mt-8 text-xl font-bold">
                 {listing.type === 'flat' ? 'Spaces & monthly pricing' : 'Room & monthly pricing'}
               </h2>
-              <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+              <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
                 <table className="w-full text-sm">
                   <thead className="bg-zinc-100 dark:bg-zinc-800">
                     <tr>
@@ -94,7 +113,7 @@ export default async function ListingDetail({
           ) : (
             <>
               <h2 className="mt-8 text-xl font-bold">Rooms & live availability</h2>
-          <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
             <table className="w-full text-sm">
               <thead className="bg-zinc-100 dark:bg-zinc-800">
                 <tr>
