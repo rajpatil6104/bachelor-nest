@@ -118,7 +118,13 @@ export default function AddListingWizard() {
         });
         const rows = customUnits ? customUnits.map(toRow) : draft.rooms.map(toRow);
         const { error: roomError } = await sb.from('rooms').insert(rows);
-        if (roomError) throw roomError;
+        if (roomError) {
+          // The listing row is already committed — don't leave an orphan
+          // listing with no rooms behind (it renders as "Full" everywhere
+          // and can never be booked).
+          await sb.from('listings').delete().eq('id', listing.id);
+          throw roomError;
+        }
       }
       setDone(true);
       window.scrollTo({ top: 0 });
