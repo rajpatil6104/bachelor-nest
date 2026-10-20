@@ -8,6 +8,7 @@ import ChatCta from '@/components/ChatCta';
 import FavoriteButton from '@/components/FavoriteButton';
 import PhotoGallery from '@/components/PhotoGallery';
 import ReviewsSection from '@/components/ReviewsSection';
+import ReportListing from '@/components/ReportListing';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds, minRent } from '@/lib/types';
 
@@ -176,6 +177,7 @@ export default async function ListingDetail({
       </div>
 
       <ReviewsSection listingId={listing.id} />
+      <ReportListing listingId={listing.id} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
+import { Inquiry, Listing, ListingReport, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 
@@ -557,6 +557,157 @@ export async function hasCompletedVisit(
       i.listing_id === listingId &&
       i.kind === 'visit' &&
       i.status === 'done'
+  );
+}
+
+
+// ---- Listing reports ----
+
+const DEMO_REPORTS_KEY = 'bn-demo-reports';
+
+function readDemoReports(): ListingReport[] {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_REPORTS_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+function writeDemoReports(all: ListingReport[]) {
+  localStorage.setItem(DEMO_REPORTS_KEY, JSON.stringify(all));
+}
+
+const ALREADY_REPORTED_MSG =
+  "You've already reported this listing — our team is looking into it.";
+
+export async function createReport(input: {
+  listing_id: string;
+  reporter_id: string;
+  reason: ReportReason;
+  details?: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data: existing } = await sb
+      .from('reports')
+      .select('id')
+      .eq('listing_id', input.listing_id)
+      .eq('reporter_id', input.reporter_id)
+      .eq('status', 'open')
+      .limit(1);
+    if ((existing ?? []).length > 0) throw new Error(ALREADY_REPORTED_MSG);
+    const { error } = await sb.from('reports').insert({
+      listing_id: input.listing_id,
+      reporter_id: input.reporter_id,
+      reason: input.reason,
+      details: input.details || null,
+    });
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new Error(ALREADY_REPORTED_MSG);
+      }
+      throw error;
+    }
+    return;
+  }
+  const all = readDemoReports();
+  if (
+    all.some(
+      (r) =>
+        r.listing_id === input.listing_id &&
+        r.reporter_id === input.reporter_id &&
+        r.status === 'open'
+    )
+  ) {
+    throw new Error(ALREADY_REPORTED_MSG);
+  }
+  all.unshift({
+    id: `demo-report-${Date.now()}`,
+    listing_id: input.listing_id,
+    reporter_id: input.reporter_id,
+    reason: input.reason,
+    details: input.details || null,
+    status: 'open',
+    created_at: new Date().toISOString(),
+  });
+  writeDemoReports(all);
+}
+
+export async function getMyOpenReport(
+  listingId: string,
+  reporterId: string
+): Promise<ListingReport | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb
+      .from('reports')
+      .select('*')
+      .eq('listing_id', listingId)
+      .eq('reporter_id', reporterId)
+      .eq('status', 'open')
+      .limit(1);
+    return ((data ?? [])[0] as ListingReport) ?? null;
+  }
+  return (
+    readDemoReports().find(
+      (r) =>
+        r.listing_id === listingId &&
+        r.reporter_id === reporterId &&
+        r.status === 'open'
+    ) ?? null
+  );
+}
+
+// Admin: all reports, open first, with listing title + reporter name.
+export async function getReports(): Promise<ListingReport[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const rows = (data ?? []) as ListingReport[];
+    if (rows.length === 0) return rows;
+    const listingIds = [...new Set(rows.map((r) => r.listing_id))];
+    const reporterIds = [...new Set(rows.map((r) => r.reporter_id))];
+    const [{ data: listings }, { data: profiles }] = await Promise.all([
+      sb.from('listings').select('id, title').in('id', listingIds),
+      sb.from('profiles').select('id, full_name').in('id', reporterIds),
+    ]);
+    const titleById = new Map((listings ?? []).map((l) => [l.id, l.title]));
+    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+    return rows
+      .map((r) => ({
+        ...r,
+        listing_title: titleById.get(r.listing_id) ?? 'Listing',
+        reporter_name: nameById.get(r.reporter_id) ?? 'Tenant',
+      }))
+      .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  }
+  const titles = new Map(
+    applyDemoListingState(MOCK_LISTINGS).map((l) => [l.id, l.title])
+  );
+  return readDemoReports()
+    .map((r) => ({
+      ...r,
+      listing_title: titles.get(r.listing_id) ?? 'Listing',
+      reporter_name: 'Demo bachelor',
+    }))
+    .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+}
+
+export async function setReportStatus(
+  id: string,
+  status: 'resolved' | 'dismissed'
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('reports').update({ status }).eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  writeDemoReports(
+    readDemoReports().map((r) => (r.id === id ? { ...r, status } : r))
   );
 }
 

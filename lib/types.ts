@@ -58,6 +58,35 @@ export interface Inquiry {
   tenant_name?: string;
 }
 
+export type ReportReason =
+  | 'Fake listing'
+  | 'Wrong price'
+  | 'Wrong photos'
+  | 'Not bachelor-friendly'
+  | 'Spam'
+  | 'Other';
+
+export const REPORT_REASONS: ReportReason[] = [
+  'Fake listing',
+  'Wrong price',
+  'Wrong photos',
+  'Not bachelor-friendly',
+  'Spam',
+  'Other',
+];
+
+export interface ListingReport {
+  id: string;
+  listing_id: string;
+  reporter_id: string;
+  reason: ReportReason;
+  details: string | null;
+  status: 'open' | 'resolved' | 'dismissed';
+  created_at: string;
+  listing_title?: string;
+  reporter_name?: string;
+}
+
 export interface VacancyAlert {
   id: string;
   tenant_id: string;
