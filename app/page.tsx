@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import ListingCard from '@/components/ListingCard';
 import OwnerRedirect from '@/components/OwnerRedirect';
+import RecentlyViewed from '@/components/RecentlyViewed';
 import { getListings } from '@/lib/db';
 
 export const instant = false;
@@ -65,6 +66,8 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      <RecentlyViewed />
 
       {/* How it works */}
       <section className="mx-auto max-w-6xl px-4 pb-16">

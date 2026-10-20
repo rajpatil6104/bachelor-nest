@@ -9,6 +9,8 @@ import FavoriteButton from '@/components/FavoriteButton';
 import PhotoGallery from '@/components/PhotoGallery';
 import ReviewsSection from '@/components/ReviewsSection';
 import ReportListing from '@/components/ReportListing';
+import ShareListing from '@/components/ShareListing';
+import RecentTracker from '@/components/RecentTracker';
 import { getListing } from '@/lib/db';
 import { ROOM_LABELS, TYPE_LABELS, availableBeds, listingAvailableBeds, minRent } from '@/lib/types';
 
@@ -69,8 +71,12 @@ export default async function ListingDetail({
 
           <div className="mt-3 flex items-start justify-between gap-4">
             <h1 className="text-3xl font-bold">{listing.title}</h1>
-            <FavoriteButton listingId={listing.id} size="lg" />
+            <div className="flex items-center gap-2">
+              <ShareListing listingId={listing.id} title={listing.title} />
+              <FavoriteButton listingId={listing.id} size="lg" />
+            </div>
           </div>
+          <RecentTracker listingId={listing.id} />
           <p className="mt-1 text-zinc-500">
             {listing.address}, {listing.locality}, {listing.city}
           </p>
