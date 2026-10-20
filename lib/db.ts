@@ -1,8 +1,39 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, Review, SearchFilters, VacancyAlert } from './types';
+import { Inquiry, Listing, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
+
+// ---- Demo-mode listing edits/deletes (persisted in localStorage) ----
+const DEMO_EDITS_KEY = 'bn-demo-listing-edits';
+const DEMO_DELETED_KEY = 'bn-demo-deleted-listings';
+
+function readDemoEdits(): Record<string, Listing> {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_EDITS_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+function writeDemoEdits(m: Record<string, Listing>) {
+  localStorage.setItem(DEMO_EDITS_KEY, JSON.stringify(m));
+}
+function readDemoDeleted(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_DELETED_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+function writeDemoDeleted(ids: string[]) {
+  localStorage.setItem(DEMO_DELETED_KEY, JSON.stringify(ids));
+}
+// Applies demo edits + hides demo-deleted listings
+export function applyDemoListingState(listings: Listing[]): Listing[] {
+  const edits = readDemoEdits();
+  const deleted = new Set(readDemoDeleted());
+  return listings.filter((l) => !deleted.has(l.id)).map((l) => edits[l.id] ?? l);
+}
 export async function getListings(filters: SearchFilters = {}): Promise<Listing[]> {
   const sb = getSupabase();
   if (sb) {
@@ -18,7 +49,7 @@ export async function getListings(filters: SearchFilters = {}): Promise<Listing[
       listings = listings.filter((l) => l.rooms.some((r) => r.room_type === filters.roomType));
     return withLiveRatings(sb, listings);
   }
-  return withDemoRatings(filterMock(filters));
+  return withDemoRatings(applyDemoListingState(filterMock(filters)));
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -33,7 +64,7 @@ export async function getListing(id: string): Promise<Listing | null> {
     const [rated] = await withLiveRatings(sb, [data as Listing]);
     return rated;
   }
-  const found = MOCK_LISTINGS.find((l) => l.id === id) ?? null;
+  const found = applyDemoListingState(MOCK_LISTINGS).find((l) => l.id === id) ?? null;
   return found ? withDemoRatings([found])[0] : null;
 }
 
@@ -58,7 +89,7 @@ export async function getOwnerListings(ownerId: string): Promise<Listing[]> {
     return (data ?? []) as Listing[];
   }
   // Demo: pretend all mock listings belong to the demo owner
-  return MOCK_LISTINGS;
+  return applyDemoListingState(MOCK_LISTINGS);
 }
 
 // ---- Admin moderation ----
@@ -74,7 +105,7 @@ export async function getPendingListings(): Promise<Listing[]> {
     if (error) throw error;
     return (data ?? []) as Listing[];
   }
-  return MOCK_LISTINGS.filter((l) => l.status === 'pending');
+  return applyDemoListingState(MOCK_LISTINGS).filter((l) => l.status === 'pending');
 }
 
 export async function setListingStatus(
@@ -87,6 +118,85 @@ export async function setListingStatus(
     if (error) throw error;
   }
   // Demo mode: the admin page manages local state instead
+}
+
+export interface ListingEditPatch {
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  locality: string;
+  amenities: string[];
+  house_rules: string;
+  rent_cycle: string;
+  photos: string[];
+}
+
+export interface RoomEditInput {
+  room_type: RoomType;
+  label: string | null;
+  total_beds: number;
+  occupied_beds: number;
+  rent_per_bed: number;
+  deposit: number;
+}
+
+// Owner edits a listing. Any edit sends the listing back to 'pending' —
+// it disappears from tenant search until an admin re-approves it.
+export async function updateListing(
+  id: string,
+  patch: ListingEditPatch,
+  rooms: RoomEditInput[]
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb
+      .from('listings')
+      .update({ ...patch, status: 'pending' })
+      .eq('id', id);
+    if (error) throw error;
+    const { error: delError } = await sb.from('rooms').delete().eq('listing_id', id);
+    if (delError) throw delError;
+    if (rooms.length > 0) {
+      const { error: insError } = await sb
+        .from('rooms')
+        .insert(rooms.map((r) => ({ listing_id: id, ...r })));
+      if (insError) throw insError;
+    }
+    return;
+  }
+  // Demo: persist an override copy
+  const base = applyDemoListingState(MOCK_LISTINGS).find((l) => l.id === id);
+  if (!base) return;
+  const edits = readDemoEdits();
+  edits[id] = {
+    ...base,
+    ...patch,
+    status: 'pending',
+    rooms: rooms.map(
+      (r, i): Room => ({ id: `demo-room-${id}-${i}`, listing_id: id, ...r })
+    ),
+  };
+  writeDemoEdits(edits);
+}
+
+// Owner removes a listing permanently (rooms go with it — FK cascade in
+// the real DB; a deleted-id list in demo mode).
+export async function deleteListing(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('listings').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const deleted = readDemoDeleted();
+  if (!deleted.includes(id)) {
+    deleted.push(id);
+    writeDemoDeleted(deleted);
+  }
+  const edits = readDemoEdits();
+  delete edits[id];
+  writeDemoEdits(edits);
 }
 
 // ---- Listing photos (Supabase Storage) ----
@@ -237,7 +347,7 @@ export async function getFavoriteListings(tenantId: string): Promise<Listing[]> 
       .filter((f) => f.tenant_id === tenantId)
       .map((f) => f.listing_id)
   );
-  return MOCK_LISTINGS.filter((l) => ids.has(l.id));
+  return applyDemoListingState(MOCK_LISTINGS).filter((l) => ids.has(l.id));
 }
 
 export async function toggleFavorite(
@@ -414,6 +524,34 @@ export async function setInquiryStatus(
     i.id === id ? { ...i, status } : i
   );
   writeDemoInquiries(all);
+}
+
+// Reviews unlock only after a visit actually happened: the tenant booked,
+// the owner accepted, and the owner confirmed the visit took place.
+export async function hasCompletedVisit(
+  tenantId: string,
+  listingId: string
+): Promise<boolean> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('inquiries')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('listing_id', listingId)
+      .eq('kind', 'visit')
+      .eq('status', 'done')
+      .limit(1);
+    if (error) return false;
+    return (data ?? []).length > 0;
+  }
+  return readDemoInquiries().some(
+    (i) =>
+      i.tenant_id === tenantId &&
+      i.listing_id === listingId &&
+      i.kind === 'visit' &&
+      i.status === 'done'
+  );
 }
 
 // ---- Reviews ----

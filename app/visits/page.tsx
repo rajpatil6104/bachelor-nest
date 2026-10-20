@@ -11,7 +11,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  done: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+  done: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 };
 
 export default function MyVisitsPage() {
@@ -72,7 +72,7 @@ export default function MyVisitsPage() {
                 <span
                   className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[inq.status] ?? STATUS_STYLE.done}`}
                 >
-                  {inq.status}
+                  {inq.status === 'done' ? 'visit completed' : inq.status}
                 </span>
               </div>
               {inq.status === 'accepted' && (
@@ -83,6 +83,11 @@ export default function MyVisitsPage() {
               {inq.status === 'rejected' && (
                 <p className="mt-2 text-sm text-zinc-500">
                   This one didn&apos;t work out — try another stay nearby.
+                </p>
+              )}
+              {inq.status === 'done' && (
+                <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                  ✓ Visit completed — you can now review this stay from its page. ⭐
                 </p>
               )}
             </Link>

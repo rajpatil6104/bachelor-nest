@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
+import { deleteListing, getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import OwnerGate from '@/components/owner/OwnerGate';
@@ -24,6 +24,9 @@ export default function OwnerDashboard() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'owner')) {
@@ -36,7 +39,8 @@ export default function OwnerDashboard() {
     Promise.all([getOwnerListings(user.id), getOwnerInquiries(user.id)]).then(
       ([l, inq]) => {
         setListings(l);
-        setInquiries(inq);
+        // Rejected visit cards are not kept in the owner's inbox
+        setInquiries(inq.filter((i) => i.status !== 'rejected'));
         setLoading(false);
       }
     );
@@ -90,13 +94,31 @@ export default function OwnerDashboard() {
     }
   };
 
-  const moderateInquiry = async (id: string, status: 'accepted' | 'rejected') => {
+  const moderateInquiry = async (id: string, status: 'accepted' | 'rejected' | 'done') => {
     setActing(id);
     try {
       await setInquiryStatus(id, status);
-      setInquiries((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+      setInquiries((prev) =>
+        status === 'rejected'
+          ? prev.filter((i) => i.id !== id) // rejected card disappears
+          : prev.map((i) => (i.id === id ? { ...i, status } : i))
+      );
     } finally {
       setActing(null);
+    }
+  };
+
+  const removeListing = async (id: string) => {
+    setRemoving(true);
+    try {
+      await deleteListing(id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+      setNotice('Listing removed permanently.');
+    } catch {
+      setNotice('Could not remove the listing. Please try again.');
+    } finally {
+      setRemoving(false);
+      setConfirmRemoveId(null);
     }
   };
 
@@ -127,6 +149,12 @@ export default function OwnerDashboard() {
     <OwnerGate>
     <div className="mx-auto max-w-5xl px-4 py-6">
       <h1 className="text-3xl font-bold">Buildings</h1>
+
+      {notice && (
+        <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:bg-brand-950 dark:text-brand-200">
+          {notice}
+        </p>
+      )}
 
       <Link
         href="/owner/add"
@@ -171,9 +199,11 @@ export default function OwnerDashboard() {
                       ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
                       : inq.status === 'accepted'
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                        : inq.status === 'done'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
                   }`}>
-                    {inq.status}
+                    {inq.status === 'done' ? 'visit completed' : inq.status}
                   </span>
                 </div>
                 {inq.status === 'pending' && (
@@ -193,6 +223,20 @@ export default function OwnerDashboard() {
                       {acting === inq.id ? 'Saving…' : 'Accept'}
                     </button>
                   </div>
+                )}
+                {inq.status === 'accepted' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-zinc-500">Did the visit happen?</span>
+                    <button onClick={() => moderateInquiry(inq.id, 'done')} disabled={acting === inq.id}
+                      className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                      {acting === inq.id ? 'Saving…' : '✓ Yes, visited'}
+                    </button>
+                  </div>
+                )}
+                {inq.status === 'done' && (
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    ✓ Visit confirmed — the tenant can now review this stay.
+                  </p>
                 )}
               </div>
             ))}
@@ -290,9 +334,34 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                 ))}
-                <Link href={`/listing/${l.id}`} className="inline-block text-sm font-medium text-brand-600 hover:underline">
-                  View public listing →
-                </Link>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Link href={`/listing/${l.id}`} className="text-sm font-medium text-brand-600 hover:underline">
+                    View public listing →
+                  </Link>
+                  <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                  <Link href={`/owner/edit/${l.id}`} className="text-sm font-medium text-brand-600 hover:underline">
+                    ✏️ Edit
+                  </Link>
+                  <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                  {confirmRemoveId === l.id ? (
+                    <span className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-red-600">Remove permanently?</span>
+                      <button onClick={() => removeListing(l.id)} disabled={removing}
+                        className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                        {removing ? 'Removing…' : 'Yes, remove'}
+                      </button>
+                      <button onClick={() => setConfirmRemoveId(null)} disabled={removing}
+                        className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold dark:border-zinc-600">
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmRemoveId(l.id)}
+                      className="text-sm font-medium text-red-600 hover:underline">
+                      🗑️ Remove
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

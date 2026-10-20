@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getMyReview, submitReview } from '@/lib/db';
+import { getMyReview, hasCompletedVisit, submitReview } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 
 export default function ReviewForm({
@@ -17,17 +17,24 @@ export default function ReviewForm({
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
   const [existing, setExisting] = useState(false);
+  const [visited, setVisited] = useState(false);
+  const [checked, setChecked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (user?.role === 'tenant') {
-      getMyReview(listingId, user.id).then((r) => {
+      Promise.all([
+        getMyReview(listingId, user.id),
+        hasCompletedVisit(user.id, listingId),
+      ]).then(([r, done]) => {
         if (r) {
           setExisting(true);
           setRating(r.rating);
           setComment(r.comment ?? '');
         }
+        setVisited(done);
+        setChecked(true);
       });
     }
   }, [user, listingId]);
@@ -43,6 +50,20 @@ export default function ReviewForm({
     );
   }
   if (user.role !== 'tenant') return null;
+
+  // Reviews unlock only after a completed visit (owner confirmed it happened).
+  // A tenant who already reviewed can keep editing theirs.
+  if (checked && !existing && !visited) {
+    return (
+      <div className="mt-4 rounded-xl border border-dashed border-zinc-300 p-4 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        🔒 Reviews unlock after a visit.{' '}
+        <Link href="#book-visit" className="font-medium text-brand-700 dark:text-brand-300">
+          Book a visit
+        </Link>{' '}
+        — once the owner confirms the visit happened, you can review this stay.
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

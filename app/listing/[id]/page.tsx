@@ -164,7 +164,9 @@ export default async function ListingDetail({
 
           {/* Actions */}
           <div className="mt-8 space-y-3">
-            <BookVisit listingId={listing.id} />
+            <div id="book-visit" className="scroll-mt-24">
+              <BookVisit listingId={listing.id} />
+            </div>
             <ChatCta listingId={listing.id} ownerId={listing.owner_id} />
           </div>
           <p className="mt-3 text-center text-xs text-zinc-400">
