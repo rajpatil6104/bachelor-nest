@@ -31,6 +31,8 @@ export interface Listing {
   review_count?: number;
   rent_cycle?: string;
   view_count?: number;
+  lat?: number | null;
+  lng?: number | null;
   created_at?: string;
 }
 

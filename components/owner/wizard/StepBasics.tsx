@@ -1,4 +1,5 @@
 import { inputCls, TYPE_CARDS, WizardDraft } from './types';
+import LocationPicker from '@/components/LocationPicker';
 
 export function validateBasics(d: WizardDraft): string | null {
   if (!d.title.trim()) return 'Give your property a name.';
@@ -88,6 +89,18 @@ export default function StepBasics({
         <label className="mb-1 mt-3 block text-sm font-medium">Description</label>
         <textarea value={draft.description} onChange={(e) => update({ description: e.target.value })}
           rows={3} placeholder="What makes your place good for bachelors?" className={inputCls} />
+        <label className="mb-1 mt-4 block text-sm font-medium">
+          Location pin <span className="font-normal text-zinc-400">(optional)</span>
+        </label>
+        <p className="mb-2 text-sm text-zinc-500">
+          Bachelors can find you on the map view. Find your address, then drag the pin if it's slightly off.
+        </p>
+        <LocationPicker
+          lat={draft.lat}
+          lng={draft.lng}
+          addressHint={`${draft.address}, ${draft.locality}, ${draft.city}, India`}
+          onChange={(lat, lng) => update({ lat, lng })}
+        />
       </div>
 
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">

@@ -17,6 +17,8 @@ export interface WizardDraft {
   city: string;
   locality: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   description: string;
   proofDocs: File[];
   rentCycle: RentCycle;
@@ -36,6 +38,8 @@ export const initialDraft = (): WizardDraft => ({
   city: '',
   locality: '',
   address: '',
+  lat: null,
+  lng: null,
   description: '',
   proofDocs: [],
   rentCycle: 'monthly',

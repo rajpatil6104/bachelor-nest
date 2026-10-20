@@ -51,3 +51,41 @@ html,
 body {
   overflow-x: clip;
 }
+
+/* Leaflet map pins (search map + location picker) */
+.bn-pin-wrap {
+  background: transparent;
+  border: none;
+}
+.bn-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -110%);
+  background: #04334b;
+  color: #fff;
+  font: 600 12px/1 Arial, sans-serif;
+  padding: 6px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.bn-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #04334b;
+  border-bottom: 0;
+}
+.bn-pin-picker {
+  background: #dc2626;
+  font-size: 15px;
+  padding: 7px 9px;
+}
+.bn-pin-picker::after {
+  border-top-color: #dc2626;
+}

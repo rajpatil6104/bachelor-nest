@@ -99,6 +99,8 @@ export default function AddListingWizard() {
             gender_allowed: 'male',
             photos: photoUrls,
             rent_cycle: draft.rentCycle,
+            lat: draft.lat,
+            lng: draft.lng,
             status: 'pending',
           })
           .select('id')

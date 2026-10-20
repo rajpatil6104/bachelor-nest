@@ -121,6 +121,8 @@ export async function setListingStatus(
 }
 
 export interface ListingEditPatch {
+  lat: number | null;
+  lng: number | null;
   title: string;
   description: string;
   address: string;

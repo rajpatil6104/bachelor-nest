@@ -3,6 +3,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import ListingCard from '@/components/ListingCard';
+import dynamic from 'next/dynamic';
+
+const ListingsMap = dynamic(() => import('@/components/ListingsMap'), { ssr: false });
 import { createAlert, getListings } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { Listing, ListingType, RoomType, SearchFilters } from '@/lib/types';
@@ -16,6 +19,7 @@ function SearchResults() {
   const [alertSaved, setAlertSaved] = useState(false);
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertError, setAlertError] = useState('');
+  const [view, setView] = useState<'list' | 'map'>('list');
 
   const [city, setCity] = useState(params.get('city') ?? '');
   const [maxBudget, setMaxBudget] = useState(params.get('maxBudget') ?? '');
@@ -132,11 +136,37 @@ function SearchResults() {
         </div>
       ) : (
         <>
-          <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {listings.map((l, i) => (
-              <ListingCard key={l.id} listing={l} index={i} />
-            ))}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setView('list')}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+                view === 'list'
+                  ? 'bg-navy-800 text-white'
+                  : 'border border-zinc-300 hover:border-brand-500 dark:border-zinc-700'
+              }`}
+            >
+              ☰ List
+            </button>
+            <button
+              onClick={() => setView('map')}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+                view === 'map'
+                  ? 'bg-navy-800 text-white'
+                  : 'border border-zinc-300 hover:border-brand-500 dark:border-zinc-700'
+              }`}
+            >
+              🗺️ Map
+            </button>
           </div>
+          {view === 'map' ? (
+            <ListingsMap listings={listings} />
+          ) : (
+            <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {listings.map((l, i) => (
+                <ListingCard key={l.id} listing={l} index={i} />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

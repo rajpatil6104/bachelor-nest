@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import OwnerGate from '@/components/owner/OwnerGate';
+import LocationPicker from '@/components/LocationPicker';
 import { getListing, updateListing, uploadListingPhotos, RoomEditInput } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -35,6 +36,8 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
   const [city, setCity] = useState('');
   const [locality, setLocality] = useState('');
   const [address, setAddress] = useState('');
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [rentCycle, setRentCycle] = useState<string>('monthly');
   const [rooms, setRooms] = useState<RoomEditInput[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -61,6 +64,8 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
       setCity(l.city);
       setLocality(l.locality);
       setAddress(l.address);
+      setLat(l.lat ?? null);
+      setLng(l.lng ?? null);
       setRentCycle(l.rent_cycle ?? 'monthly');
       setRooms(
         l.rooms.map((r) => ({
@@ -141,6 +146,8 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
       await updateListing(
         listing.id,
         {
+          lat,
+          lng,
           title: title.trim(),
           description: description.trim(),
           address: address.trim(),
@@ -253,6 +260,18 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
           <div>
             <label className={labelCls}>Full address</label>
             <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Location pin</label>
+            <LocationPicker
+              lat={lat}
+              lng={lng}
+              addressHint={`${address}, ${locality}, ${city}, India`}
+              onChange={(la, ln) => {
+                setLat(la);
+                setLng(ln);
+              }}
+            />
           </div>
           <div>
             <label className={labelCls}>Rent collection cycle</label>
