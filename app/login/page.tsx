@@ -15,6 +15,7 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const next = searchParams.get('next') ?? '/';
+  const resetDone = searchParams.get('reset') === '1';
 
   // Owners and admins land on their dashboards, not the browse home
   useEffect(() => {
@@ -50,6 +51,12 @@ function LoginForm() {
       <h1 className="text-2xl font-bold">Welcome back 👋</h1>
       <p className="mt-1 text-sm text-zinc-500">Log in to your BachelorsNest account.</p>
 
+      {resetDone && (
+        <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          ✅ Password updated — log in with your new password.
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <input
           type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
@@ -59,6 +66,11 @@ function LoginForm() {
           type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
           placeholder="Password" className={inputCls}
         />
+        <div className="text-right">
+          <Link href="/forgot-password" className="text-sm font-medium text-brand-600 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
             {error}

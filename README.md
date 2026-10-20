@@ -141,6 +141,21 @@ teal accents, "Log in & add your stays" button). Set `NEXT_PUBLIC_SITE_URL`
 in `.env.local` (see `.env.example`) once the app is deployed so the button
 links to your live site.
 
+## Forgot password
+
+Login → "Forgot password?" runs: email → 6-digit code (same self-hosted
+OTP system as owner registration, emailed from your Gmail) → verify →
+new password → back to login. Two setup items:
+
+1. Run `supabase/migration_password_reset.sql` in the SQL editor (stores
+   the single-use, 10-minute reset tokens — hashed, service-role only).
+2. Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (and to your host's
+   env vars, marked secret): Supabase → Project Settings → API →
+   Project API keys → **service_role**. The reset routes use it
+   server-side only to set the verified user's new password. Treat it
+   like a master key — never commit it, never share it, never expose it
+   to the browser.
+
 ## Project structure
 
 ```
