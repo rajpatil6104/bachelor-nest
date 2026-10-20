@@ -28,7 +28,7 @@ export default function ShareListing({
     typeof window !== 'undefined'
       ? `${window.location.origin}/listing/${listingId}`
       : `/listing/${listingId}`;
-  const text = `Check out ${title} on BachelorNest — bachelor-friendly stay with live vacancy 🏠`;
+  const text = `Check out ${title} on BachelorsNest — bachelor-friendly stay with live vacancy 🏠`;
   const canNativeShare =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 

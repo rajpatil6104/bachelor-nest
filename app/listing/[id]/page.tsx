@@ -31,7 +31,7 @@ export async function generateMetadata({
     title: `${listing.title} — ${TYPE_LABELS[listing.type]} in ${listing.city}`,
     description: `${TYPE_LABELS[listing.type]} in ${listing.locality}, ${listing.city}. ${
       available > 0 ? `${available} bed${available === 1 ? '' : 's'} available now` : 'Currently full'
-    }${rent > 0 ? `, rent from ₹${rent.toLocaleString('en-IN')}/month` : ''}. Bachelor-friendly, zero brokerage — contact the owner directly on BachelorNest.`,
+    }${rent > 0 ? `, rent from ₹${rent.toLocaleString('en-IN')}/month` : ''}. Bachelor-friendly, zero brokerage — contact the owner directly on BachelorsNest.`,
   };
 }
 

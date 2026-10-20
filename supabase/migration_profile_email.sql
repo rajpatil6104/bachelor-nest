@@ -1,4 +1,4 @@
--- BachelorNest migration: owner email on profiles
+-- BachelorsNest migration: owner email on profiles
 -- Run this in the Supabase SQL editor after migration_owner_kyc.sql.
 --
 -- Stores the owner's email on their profile so the admin panel can send the

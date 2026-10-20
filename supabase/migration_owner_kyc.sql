@@ -1,4 +1,4 @@
--- BachelorNest migration: owner KYC + rent cycle
+-- BachelorsNest migration: owner KYC + rent cycle
 -- Run this in the Supabase SQL editor after schema.sql.
 --
 -- Adds rent collection cycle to listings, KYC fields to profiles, and a

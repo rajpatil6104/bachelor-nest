@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'Owner profile',
-  description: 'Your BachelorNest owner profile and contact details.',
+  description: 'Your BachelorsNest owner profile and contact details.',
 };
 
 export default function Layout({ children }: { children: ReactNode }) {

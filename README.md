@@ -1,4 +1,4 @@
-# 🏠 BachelorNest
+# 🏠 BachelorsNest
 
 A web app where **bachelors find PGs, hostels, rooms & flats** listed directly by
 owners — with **live vacancy availability**. Zero brokerage.
@@ -136,7 +136,7 @@ works — the email is skipped and the admin sees a note.
 
 Note: regular Gmail accounts can send ~500 emails/day this way — plenty for
 verification mails. Keep the App Password secret like any password.
-The email is a branded BachelorNest template (navy header, embedded logo,
+The email is a branded BachelorsNest template (navy header, embedded logo,
 teal accents, "Log in & add your stays" button). Set `NEXT_PUBLIC_SITE_URL`
 in `.env.local` (see `.env.example`) once the app is deployed so the button
 links to your live site.

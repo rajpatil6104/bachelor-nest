@@ -23,8 +23,8 @@ function ipAllowed(ip: string): boolean {
 
 function otpEmailHtml(code: string, hasLogo: boolean): string {
   const logoBlock = hasLogo
-    ? `<img src="cid:bachelornest-logo" alt="BachelorNest" width="110" style="display:block;margin:0 auto;border:0;" />`
-    : `<div style="font-size:30px;font-weight:bold;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">BachelorNest</div>`;
+    ? `<img src="cid:bachelorsnest-logo" alt="BachelorsNest" width="110" style="display:block;margin:0 auto;border:0;" />`
+    : `<div style="font-size:30px;font-weight:bold;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">BachelorsNest</div>`;
 
   return `<!DOCTYPE html>
 <html><body style="margin:0;padding:0;background-color:#eef4f4;">
@@ -33,7 +33,7 @@ function otpEmailHtml(code: string, hasLogo: boolean): string {
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:20px;overflow:hidden;">
 <tr><td style="background-color:#04334B;padding:28px 32px;" align="center">
 ${logoBlock}
-<div style="color:#42BFBC;font-size:13px;font-weight:bold;letter-spacing:3px;margin-top:10px;">BACHELORNEST</div>
+<div style="color:#42BFBC;font-size:13px;font-weight:bold;letter-spacing:3px;margin-top:10px;">BACHELORSNEST</div>
 </td></tr>
 <tr><td style="padding:36px 36px 12px;" align="center">
 <h1 style="color:#04334B;font-size:24px;margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;">Your verification code</h1>
@@ -46,7 +46,7 @@ This code expires in 10 minutes. If you didn't request this, you can safely igno
 </p>
 </td></tr>
 <tr><td align="center" style="padding:16px 36px 32px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;">
-— Team BachelorNest 🪹
+— Team BachelorsNest 🪹
 </td></tr>
 </table>
 </td></tr>
@@ -119,16 +119,16 @@ export async function POST(req: NextRequest) {
     let attachments: { filename: string; content: Buffer; cid: string }[] = [];
     try {
       const logo = await readFile(path.join(process.cwd(), 'public', 'logo.png'));
-      attachments = [{ filename: 'logo.png', content: logo, cid: 'bachelornest-logo' }];
+      attachments = [{ filename: 'logo.png', content: logo, cid: 'bachelorsnest-logo' }];
     } catch {
       attachments = [];
     }
 
     await transporter.sendMail({
-      from: `"BachelorNest" <${gmailUser}>`,
+      from: `"BachelorsNest" <${gmailUser}>`,
       to: email,
-      subject: 'Your BachelorNest verification code 🔑',
-      text: `Your BachelorNest verification code is: ${code}\n\nIt expires in 10 minutes. If you didn't request this, you can ignore this email.\n\n— Team BachelorNest`,
+      subject: 'Your BachelorsNest verification code 🔑',
+      text: `Your BachelorsNest verification code is: ${code}\n\nIt expires in 10 minutes. If you didn't request this, you can ignore this email.\n\n— Team BachelorsNest`,
       html: otpEmailHtml(code, attachments.length > 0),
       attachments,
     });

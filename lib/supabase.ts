@@ -25,7 +25,7 @@ export function getSupabase(): SupabaseClient | null {
       !url
     ) {
       console.warn(
-        '[BachelorNest] NEXT_PUBLIC_SUPABASE_URL is set but not a valid URL — running in demo mode. Check your .env.local:',
+        '[BachelorsNest] NEXT_PUBLIC_SUPABASE_URL is set but not a valid URL — running in demo mode. Check your .env.local:',
         JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL)
       );
     }

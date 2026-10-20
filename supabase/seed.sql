@@ -1,4 +1,4 @@
--- BachelorNest seed data (Supabase / Postgres)
+-- BachelorsNest seed data (Supabase / Postgres)
 -- Run AFTER schema.sql, and AFTER signing up in the app as an owner.
 --
 -- 1. Replace 'owner@example.com' below with the email you signed up with.

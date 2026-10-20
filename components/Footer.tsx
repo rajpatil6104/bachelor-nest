@@ -41,8 +41,8 @@ export default function Footer() {
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2">
           <Link href="/" className="inline-flex items-center gap-2">
-            <img src="/logo.png" alt="BachelorNest logo" className="h-9 w-auto" />
-            <span className="text-lg font-bold">BachelorNest</span>
+            <img src="/logo.png" alt="BachelorsNest logo" className="h-9 w-auto" />
+            <span className="text-lg font-bold">BachelorsNest</span>
           </Link>
           <p className="mt-3 max-w-xs text-sm text-zinc-500">
             Bachelor-friendly PGs, hostels, rooms and flats across India — live
@@ -98,7 +98,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-zinc-200 px-4 py-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-        © <CopyrightYear /> BachelorNest. All rights reserved. · Built for
+        © <CopyrightYear /> BachelorsNest. All rights reserved. · Built for
         bachelors, by a bachelor 🏠
       </div>
     </footer>

@@ -304,7 +304,7 @@ export default function RegisterPage() {
           <p className="mt-1 text-sm text-zinc-500">
             {role === 'owner' && step !== 'details'
               ? 'Owner verification — step ' + (step === 'otp' ? '2' : '3') + ' of 3'
-              : 'One account — pick how you\'ll use BachelorNest.'}
+              : 'One account — pick how you\'ll use BachelorsNest.'}
           </p>
 
           {step === 'details' && (

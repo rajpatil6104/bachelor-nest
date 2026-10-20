@@ -1,4 +1,4 @@
--- BachelorNest migration: listing photo storage
+-- BachelorsNest migration: listing photo storage
 -- Run this in the Supabase SQL editor AFTER schema.sql.
 --
 -- Creates a public bucket for property photos. Files are stored under

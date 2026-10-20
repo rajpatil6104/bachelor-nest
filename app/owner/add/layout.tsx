@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'Add a property',
-  description: 'List your PG, hostel, flat or room on BachelorNest with the step-by-step builder.',
+  description: 'List your PG, hostel, flat or room on BachelorsNest with the step-by-step builder.',
 };
 
 export default function Layout({ children }: { children: ReactNode }) {

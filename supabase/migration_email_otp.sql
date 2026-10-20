@@ -1,4 +1,4 @@
--- BachelorNest migration: self-hosted email OTP
+-- BachelorsNest migration: self-hosted email OTP
 -- Run this in the Supabase SQL editor.
 --
 -- After running it, turn OFF "Confirm email" in the dashboard at

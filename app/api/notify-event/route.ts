@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
           ctaText: 'View this stay',
           ctaPath: `/listing/${body.listingId}`,
         },
-        `Hi ${name}, ${listing.title} in ${listing.locality}, ${listing.city} just went live and matches your vacancy alert on BachelorNest.`
+        `Hi ${name}, ${listing.title} in ${listing.locality}, ${listing.city} just went live and matches your vacancy alert on BachelorsNest.`
       );
       if (res.sent) count++;
     }
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     .select('title, owner_id')
     .eq('id', inquiry.listing_id)
     .single();
-  const title = listing?.title ?? 'a stay on BachelorNest';
+  const title = listing?.title ?? 'a stay on BachelorsNest';
 
   if (body.type === 'visit_requested') {
     if (inquiry.tenant_id !== user.id) {
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
         ctaText: 'View visit requests',
         ctaPath: '/owner',
       },
-      `Hi, ${tenantName} wants to visit ${title}${inquiry.preferred_date ? ` on ${inquiry.preferred_date}` : ''}. Open your BachelorNest dashboard to respond.`
+      `Hi, ${tenantName} wants to visit ${title}${inquiry.preferred_date ? ` on ${inquiry.preferred_date}` : ''}. Open your BachelorsNest dashboard to respond.`
     );
     return NextResponse.json(res);
   }
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
           ctaText: 'See my visits',
           ctaPath: '/visits',
         },
-        `Hi ${name}, the owner of ${title} accepted your visit request on BachelorNest.`
+        `Hi ${name}, the owner of ${title} accepted your visit request on BachelorsNest.`
       );
       return NextResponse.json(res);
     }
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
           ctaText: 'Find other stays',
           ctaPath: '/search',
         },
-        `Hi ${name}, the owner of ${title} couldn't take your visit request. Find other stays on BachelorNest.`
+        `Hi ${name}, the owner of ${title} couldn't take your visit request. Find other stays on BachelorsNest.`
       );
       return NextResponse.json(res);
     }
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         ctaText: 'Review this stay',
         ctaPath: `/listing/${inquiry.listing_id}`,
       },
-      `Hi ${name}, your visit to ${title} is confirmed complete. You can now review this stay on BachelorNest.`
+      `Hi ${name}, your visit to ${title} is confirmed complete. You can now review this stay on BachelorsNest.`
     );
     return NextResponse.json(res);
   }

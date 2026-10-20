@@ -1,4 +1,4 @@
-// Server-only mailer shared by the API routes. Sends branded BachelorNest
+// Server-only mailer shared by the API routes. Sends branded BachelorsNest
 // emails from the app's Gmail account (GMAIL_USER + GMAIL_APP_PASSWORD in
 // .env.local — never exposed to the browser). Used by /api/notify (owner
 // verified) and /api/notify-event (visit + alert notifications).
@@ -48,8 +48,8 @@ export async function renderBrandedEmail(e: BrandedEmail): Promise<string> {
   const logo = await loadLogo();
   const url = siteUrl();
   const logoBlock = logo
-    ? `<img src="cid:bachelornest-logo" alt="BachelorNest" width="110" style="display:block;margin:0 auto;border:0;" />`
-    : `<div style="font-size:30px;font-weight:bold;color:#ffffff;">BachelorNest</div>`;
+    ? `<img src="cid:bachelorsnest-logo" alt="BachelorsNest" width="110" style="display:block;margin:0 auto;border:0;" />`
+    : `<div style="font-size:30px;font-weight:bold;color:#ffffff;">BachelorsNest</div>`;
   const cta =
     e.ctaText && e.ctaPath && url
       ? `<tr><td align="center" style="padding:8px 0 8px;">
@@ -64,7 +64,7 @@ export async function renderBrandedEmail(e: BrandedEmail): Promise<string> {
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:20px;overflow:hidden;">
 <tr><td style="background-color:#04334B;padding:28px 32px;" align="center">
 ${logoBlock}
-<div style="color:#42BFBC;font-size:13px;font-weight:bold;letter-spacing:3px;margin-top:10px;">BACHELORNEST</div>
+<div style="color:#42BFBC;font-size:13px;font-weight:bold;letter-spacing:3px;margin-top:10px;">BACHELORSNEST</div>
 </td></tr>
 <tr><td style="padding:36px 36px 12px;" align="center">
 <div style="font-size:44px;">${e.emoji}</div>
@@ -75,7 +75,7 @@ ${e.bodyHtml}
 </td></tr>
 ${cta}
 <tr><td align="center" style="padding:20px 36px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;">
-— Team BachelorNest 🪹
+— Team BachelorsNest 🪹
 </td></tr>
 </table>
 </td></tr>
@@ -100,13 +100,13 @@ export async function sendBrandedEmail(
     });
     const logo = await loadLogo();
     await transporter.sendMail({
-      from: `"BachelorNest" <${gmailUser}>`,
+      from: `"BachelorsNest" <${gmailUser}>`,
       to,
       subject,
       text: textFallback,
       html: await renderBrandedEmail(email),
       attachments: logo
-        ? [{ filename: 'logo.png', content: logo, cid: 'bachelornest-logo' }]
+        ? [{ filename: 'logo.png', content: logo, cid: 'bachelorsnest-logo' }]
         : [],
     });
     return { sent: true };

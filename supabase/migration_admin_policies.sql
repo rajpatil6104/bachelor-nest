@@ -1,4 +1,4 @@
--- BachelorNest migration: admin moderation policies
+-- BachelorsNest migration: admin moderation policies
 -- Run this in the Supabase SQL editor AFTER schema.sql.
 --
 -- Gives users with role='admin' (in public.profiles) the ability to

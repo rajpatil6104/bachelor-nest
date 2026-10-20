@@ -48,7 +48,7 @@ function LoginForm() {
   return (
     <div className="mx-auto max-w-md px-4 py-12">
       <h1 className="text-2xl font-bold">Welcome back 👋</h1>
-      <p className="mt-1 text-sm text-zinc-500">Log in to your BachelorNest account.</p>
+      <p className="mt-1 text-sm text-zinc-500">Log in to your BachelorsNest account.</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <input

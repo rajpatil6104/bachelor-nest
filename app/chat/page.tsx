@@ -3,7 +3,7 @@ import ChatInbox from '@/components/ChatInbox';
 
 export const metadata = {
   title: 'Chats',
-  description: 'Chat directly with owners and bachelors on BachelorNest — no brokerage, no middlemen.',
+  description: 'Chat directly with owners and bachelors on BachelorsNest — no brokerage, no middlemen.',
 };
 
 export default function ChatPage() {

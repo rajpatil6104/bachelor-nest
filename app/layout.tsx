@@ -18,16 +18,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "BachelorNest — PG, Hostel & Room Finder for Bachelors",
-    template: "%s · BachelorNest",
+    default: "BachelorsNest — PG, Hostel & Room Finder for Bachelors",
+    template: "%s · BachelorsNest",
   },
   description:
     "Find bachelor-friendly PGs, hostels, rooms and flats in India with live vacancy availability. Zero brokerage, direct from owners.",
   openGraph: {
-    title: "BachelorNest — PG, Hostel & Room Finder for Bachelors",
+    title: "BachelorsNest — PG, Hostel & Room Finder for Bachelors",
     description:
       "Bachelor-friendly PGs, hostels, rooms and flats in India with live vacancy availability. Zero brokerage, direct from owners.",
-    siteName: "BachelorNest",
+    siteName: "BachelorsNest",
     type: "website",
   },
 };

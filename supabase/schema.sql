@@ -1,4 +1,4 @@
--- BachelorNest database schema (Supabase / Postgres)
+-- BachelorsNest database schema (Supabase / Postgres)
 -- Run this in the Supabase SQL editor (or `supabase db push`).
 
 -- ============ PROFILES (extends Supabase Auth users) ============

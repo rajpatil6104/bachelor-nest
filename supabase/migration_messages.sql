@@ -1,4 +1,4 @@
--- BachelorNest migration: in-app chat messages
+-- BachelorsNest migration: in-app chat messages
 -- Run this in the Supabase SQL editor after schema.sql.
 --
 -- One conversation = (listing_id, tenant, owner). Names are denormalized onto

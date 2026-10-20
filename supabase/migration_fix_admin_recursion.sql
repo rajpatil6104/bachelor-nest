@@ -1,4 +1,4 @@
--- BachelorNest FIX migration: 42P17 infinite recursion in RLS policies
+-- BachelorsNest FIX migration: 42P17 infinite recursion in RLS policies
 -- Run this in the Supabase SQL editor if you already ran migration_owner_kyc.sql
 -- and now see { code: "42P17" } ("infinite recursion detected in policy").
 --
