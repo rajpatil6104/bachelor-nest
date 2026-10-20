@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deleteListing, getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
+import { notifyEvent } from '@/lib/notify';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import OwnerGate from '@/components/owner/OwnerGate';
@@ -98,6 +99,14 @@ export default function OwnerDashboard() {
     setActing(id);
     try {
       await setInquiryStatus(id, status);
+      void notifyEvent(
+        status === 'accepted'
+          ? 'visit_accepted'
+          : status === 'rejected'
+            ? 'visit_rejected'
+            : 'visit_done',
+        { inquiryId: id }
+      );
       setInquiries((prev) =>
         status === 'rejected'
           ? prev.filter((i) => i.id !== id) // rejected card disappears

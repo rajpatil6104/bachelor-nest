@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getPendingListings, setListingStatus } from '@/lib/db';
+import { notifyEvent } from '@/lib/notify';
 import { useAuth } from '@/lib/auth';
 import KycReview from '@/components/admin/KycReview';
 import {
@@ -37,6 +38,9 @@ export default function AdminPage() {
     setActing(id);
     try {
       await setListingStatus(id, status);
+      if (status === 'approved') {
+        void notifyEvent('listing_approved_alerts', { listingId: id });
+      }
       setListings((prev) => prev.filter((l) => l.id !== id));
     } finally {
       setActing(null);

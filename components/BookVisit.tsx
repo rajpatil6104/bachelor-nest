@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createInquiry } from '@/lib/db';
+import { notifyEvent } from '@/lib/notify';
 import { useAuth } from '@/lib/auth';
 
 export default function BookVisit({ listingId }: { listingId: string }) {
@@ -45,13 +46,14 @@ export default function BookVisit({ listingId }: { listingId: string }) {
     setBusy(true);
     setError('');
     try {
-      await createInquiry({
+      const inquiryId = await createInquiry({
         listing_id: listingId,
         tenant_id: user!.id,
         kind: 'visit',
         preferred_date: date || undefined,
         message: message || undefined,
       });
+      if (inquiryId) void notifyEvent('visit_requested', { inquiryId });
       setSent(true);
     } catch (err: any) {
       setError(err?.message ?? 'Could not send the request. Try again.');

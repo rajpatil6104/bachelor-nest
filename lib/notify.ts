@@ -41,3 +41,37 @@ export async function sendVerifiedEmail(
     return { sent: false, reason: 'error' };
   }
 }
+
+export type NotifyEventType =
+  | 'visit_requested'
+  | 'visit_accepted'
+  | 'visit_rejected'
+  | 'visit_done'
+  | 'listing_approved_alerts';
+
+// Fire-and-forget event email via /api/notify-event (visit lifecycle +
+// vacancy-alert matches). Never throws and never blocks the UI — if Gmail
+// isn't configured or anything fails, the app carries on silently.
+// No-op in demo mode (no Supabase session).
+export async function notifyEvent(
+  type: NotifyEventType,
+  payload: { inquiryId?: string; listingId?: string }
+): Promise<void> {
+  try {
+    const sb = getSupabase();
+    if (!sb) return;
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    await fetch('/api/notify-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ type, ...payload }),
+    });
+  } catch {
+    // Notifications are best-effort only.
+  }
+}

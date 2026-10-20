@@ -103,6 +103,23 @@ How it works: `/api/otp/send` creates the code and emails a branded template →
 `/api/otp/verify` checks it → the app creates the account with `signUp`.
 The old `supabase/email-templates/magic-link-otp.html` is no longer used.
 
+### Event notification emails (optional)
+
+Visit + alert emails, sent from the same Gmail account by `/api/notify-event`:
+
+- Tenant books a visit → owner gets a "new visit request" email
+- Owner accepts / declines / confirms the visit → tenant gets the update
+  (the "visit completed" email invites them to review the stay)
+- Admin approves a listing → tenants whose vacancy alerts match it
+  (city, budget, room type) get a "new stay" email
+
+Run `supabase/migration_notifications.sql` once — it adds the
+SECURITY DEFINER contact helpers the route uses (profiles stay private
+under RLS; the helpers expose one email at a time for a listing/inquiry
+the caller is part of). Uses the same `GMAIL_USER` / `GMAIL_APP_PASSWORD`
+env vars; if they're unset, every email silently no-ops and the app is
+unaffected.
+
 ### Owner verification emails (optional)
 
 When an admin verifies an owner, the app emails them from **your Gmail account**

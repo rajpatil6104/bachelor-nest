@@ -427,23 +427,28 @@ export async function createInquiry(input: {
   kind: 'visit' | 'callback';
   preferred_date?: string;
   message?: string;
-}): Promise<void> {
+}): Promise<string | null> {
   const sb = getSupabase();
   if (sb) {
-    const { error } = await sb.from('inquiries').insert({
-      listing_id: input.listing_id,
-      tenant_id: input.tenant_id,
-      kind: input.kind,
-      status: 'pending',
-      preferred_date: input.preferred_date || null,
-      message: input.message || null,
-    });
+    const { data, error } = await sb
+      .from('inquiries')
+      .insert({
+        listing_id: input.listing_id,
+        tenant_id: input.tenant_id,
+        kind: input.kind,
+        status: 'pending',
+        preferred_date: input.preferred_date || null,
+        message: input.message || null,
+      })
+      .select('id')
+      .single();
     if (error) throw error;
-    return;
+    return data?.id ?? null;
   }
+  const newId = `demo-inq-${Date.now()}`;
   const all = readDemoInquiries();
   all.unshift({
-    id: `demo-inq-${Date.now()}`,
+    id: newId,
     listing_id: input.listing_id,
     tenant_id: input.tenant_id,
     kind: input.kind,
@@ -453,6 +458,7 @@ export async function createInquiry(input: {
     created_at: new Date().toISOString(),
   });
   writeDemoInquiries(all);
+  return newId;
 }
 
 export async function getTenantInquiries(tenantId: string): Promise<Inquiry[]> {
