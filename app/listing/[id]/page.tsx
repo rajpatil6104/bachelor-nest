@@ -76,7 +76,7 @@ export default async function ListingDetail({
               <FavoriteButton listingId={listing.id} size="lg" />
             </div>
           </div>
-          <RecentTracker listingId={listing.id} />
+          <RecentTracker listingId={listing.id} ownerId={listing.owner_id} />
           <p className="mt-1 text-zinc-500">
             {listing.address}, {listing.locality}, {listing.city}
           </p>

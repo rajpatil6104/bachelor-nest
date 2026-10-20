@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { deleteListing, getOwnerListings, getOwnerInquiries, setInquiryStatus } from '@/lib/db';
+import { deleteListing, getOwnerListings, getOwnerInquiries, getOwnerStats, setInquiryStatus } from '@/lib/db';
 import { notifyEvent } from '@/lib/notify';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -11,6 +11,7 @@ import OwnerGate from '@/components/owner/OwnerGate';
 import {
   Inquiry,
   Listing,
+  ListingStats,
   ROOM_LABELS,
   TYPE_LABELS,
   availableBeds,
@@ -25,6 +26,7 @@ export default function OwnerDashboard() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [listingStats, setListingStats] = useState<Record<string, ListingStats>>({});
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -45,6 +47,11 @@ export default function OwnerDashboard() {
         setLoading(false);
       }
     );
+    // Analytics are decorative — never let them break the dashboard
+    // (e.g. before migration_analytics.sql has been run).
+    getOwnerStats(user.id)
+      .then(setListingStats)
+      .catch(() => setListingStats({}));
   }, [user]);
 
   const stats = useMemo(() => {
@@ -343,6 +350,17 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                 ))}
+                {listingStats[l.id] && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-zinc-50 px-4 py-2.5 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    <span>👁️ {listingStats[l.id].views} views</span>
+                    <span>♡ {listingStats[l.id].saves} saves</span>
+                    <span>📅 {listingStats[l.id].inquiries} enquiries</span>
+                    <span>✅ {listingStats[l.id].visitsDone} visits done</span>
+                    {listingStats[l.id].avgRating != null && (
+                      <span>⭐ {listingStats[l.id].avgRating} ({listingStats[l.id].reviewCount} reviews)</span>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Link href={`/listing/${l.id}`} className="text-sm font-medium text-brand-600 hover:underline">
                     View public listing →

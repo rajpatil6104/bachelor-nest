@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Inquiry, Listing, ListingReport, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
+import { Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 
@@ -1238,4 +1238,116 @@ export async function ensureOwnerProfile(p: {
     { onConflict: 'id' }
   );
   if (error) throw error;
+}
+
+// ---- Owner analytics ----
+
+const DEMO_VIEWS_KEY = 'bn-demo-view-counts';
+
+function readDemoViews(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_VIEWS_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
+// Count a listing-page view. Fire-and-forget: analytics must never break
+// or slow down the page. Real DB: the increment_listing_view RPC.
+export async function trackListingView(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      await sb.rpc('increment_listing_view', { p_listing_id: id });
+    } catch {
+      // RPC missing (migration not run yet) — ignore.
+    }
+    return;
+  }
+  const m = readDemoViews();
+  m[id] = (m[id] ?? 0) + 1;
+  localStorage.setItem(DEMO_VIEWS_KEY, JSON.stringify(m));
+}
+
+// Per-listing stats for the owner dashboard, keyed by listing id.
+// Real DB: owner_listing_stats() RPC (SECURITY DEFINER, scoped to the
+// caller's own listings) + the view_count column. Demo: composed from
+// the local favorites / inquiries / reviews / view stores.
+export async function getOwnerStats(
+  ownerId: string
+): Promise<Record<string, ListingStats>> {
+  const sb = getSupabase();
+  if (sb) {
+    const [{ data: statRows }, { data: viewRows }] = await Promise.all([
+      sb.rpc('owner_listing_stats'),
+      sb.from('listings').select('id, view_count').eq('owner_id', ownerId),
+    ]);
+    const views = new Map<string, number>(
+      ((viewRows ?? []) as { id: string; view_count: number | null }[]).map(
+        (r) => [r.id, r.view_count ?? 0]
+      )
+    );
+    const out: Record<string, ListingStats> = {};
+    for (const r of (statRows ?? []) as {
+      listing_id: string;
+      saves: number;
+      inquiries: number;
+      visits_done: number;
+      review_count: number;
+      avg_rating: number | null;
+    }[]) {
+      out[r.listing_id] = {
+        views: views.get(r.listing_id) ?? 0,
+        saves: Number(r.saves),
+        inquiries: Number(r.inquiries),
+        visitsDone: Number(r.visits_done),
+        reviewCount: Number(r.review_count),
+        avgRating:
+          r.avg_rating != null ? Math.round(Number(r.avg_rating) * 10) / 10 : null,
+      };
+    }
+    for (const [id, v] of views) {
+      if (!out[id]) {
+        out[id] = {
+          views: v,
+          saves: 0,
+          inquiries: 0,
+          visitsDone: 0,
+          reviewCount: 0,
+          avgRating: null,
+        };
+      }
+    }
+    return out;
+  }
+
+  const viewsMap = readDemoViews();
+  const out: Record<string, ListingStats> = {};
+  const ensure = (id: string): ListingStats =>
+    (out[id] ??= {
+      views: viewsMap[id] ?? 0,
+      saves: 0,
+      inquiries: 0,
+      visitsDone: 0,
+      reviewCount: 0,
+      avgRating: null,
+    });
+  for (const f of readDemoFavorites()) ensure(f.listing_id).saves++;
+  for (const i of readDemoInquiries()) {
+    const st = ensure(i.listing_id);
+    st.inquiries++;
+    if (i.status === 'done') st.visitsDone++;
+  }
+  const ratingsBy: Record<string, number[]> = {};
+  for (const r of readDemoReviews()) {
+    (ratingsBy[r.listing_id] ??= []).push(r.rating);
+  }
+  for (const [id, ratings] of Object.entries(ratingsBy)) {
+    const st = ensure(id);
+    st.reviewCount = ratings.length;
+    st.avgRating =
+      Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+  }
+  for (const id of Object.keys(viewsMap)) ensure(id);
+  return out;
 }

@@ -30,6 +30,7 @@ export interface Listing {
   avg_rating?: number;
   review_count?: number;
   rent_cycle?: string;
+  view_count?: number;
   created_at?: string;
 }
 
@@ -85,6 +86,15 @@ export interface ListingReport {
   created_at: string;
   listing_title?: string;
   reporter_name?: string;
+}
+
+export interface ListingStats {
+  views: number;
+  saves: number;
+  inquiries: number;
+  visitsDone: number;
+  reviewCount: number;
+  avgRating: number | null;
 }
 
 export interface VacancyAlert {
