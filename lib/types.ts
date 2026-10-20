@@ -162,6 +162,53 @@ export const EXPENSE_CATEGORIES = [
   'Other',
 ] as const;
 
+export type FlatmateKind = 'have_room' | 'need_room';
+
+export interface FlatmatePost {
+  id: string;
+  user_id: string;
+  poster_name: string;
+  kind: FlatmateKind;
+  city: string;
+  locality: string | null;
+  budget: number;
+  move_in: string | null;
+  about: string | null;
+  tags: string[];
+  status: 'open' | 'closed';
+  created_at: string;
+  poster_email?: string; // demo mode only (contact reveal)
+}
+
+export interface FlatmateInterest {
+  id: string;
+  post_id: string;
+  seeker_id: string;
+  seeker_name: string;
+  message: string | null;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  // Attached context (from the post / seeker)
+  post_kind?: FlatmateKind;
+  post_city?: string;
+  post_locality?: string | null;
+  post_budget?: number;
+  poster_name?: string;
+}
+
+export const FLATMATE_TAGS = [
+  'Non-smoker',
+  'Vegetarian',
+  'Non-veg ok',
+  'Night owl',
+  'Early riser',
+  'Works from home',
+  'Student',
+  'Working professional',
+  'Pets ok',
+  'Guests ok',
+] as const;
+
 export interface VacancyAlert {
   id: string;
   tenant_id: string;

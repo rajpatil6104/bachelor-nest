@@ -1,6 +1,6 @@
 import { MOCK_LISTINGS } from './mock-data';
 import { getSupabase } from './supabase';
-import { Agreement, Expense, ExpenseGroup, ExpenseMember, Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, Settlement, VacancyAlert } from './types';
+import { Agreement, Expense, ExpenseGroup, ExpenseMember, FlatmateInterest, FlatmateKind, FlatmatePost, Inquiry, Listing, ListingReport, ListingStats, ReportReason, Review, Room, RoomType, SearchFilters, Settlement, VacancyAlert } from './types';
 
 // Data layer: uses Supabase when configured, otherwise demo data.
 
@@ -1710,4 +1710,367 @@ export async function addSettlement(input: {
   store.settlements.push(settlement);
   writeDemoExpenseStore(store);
   return settlement;
+}
+
+// ---- Flatmate matching ----
+
+interface DemoFlatmateStore {
+  posts: FlatmatePost[];
+  interests: FlatmateInterest[];
+}
+
+const DEMO_FLAT_KEY = 'bn-demo-flatmates';
+
+const DEMO_FLAT_SEED: DemoFlatmateStore = {
+  posts: [
+    {
+      id: 'demo-flat-1',
+      user_id: 'demo-user-rahul',
+      poster_name: 'Rahul Sharma',
+      poster_email: 'rahul@demo.in',
+      kind: 'have_room',
+      city: 'Pune',
+      locality: 'Akurdi',
+      budget: 7000,
+      move_in: null,
+      about:
+        'One bed free in a 2-sharing PG room near the station. I keep things clean and quiet on weekdays.',
+      tags: ['Non-smoker', 'Working professional', 'Early riser'],
+      status: 'open',
+      created_at: new Date(Date.now() - 2 * 864e5).toISOString(),
+    },
+    {
+      id: 'demo-flat-2',
+      user_id: 'demo-user-vikram',
+      poster_name: 'Vikram Patil',
+      poster_email: 'vikram@demo.in',
+      kind: 'need_room',
+      city: 'Pune',
+      locality: 'Chinchwad',
+      budget: 8000,
+      move_in: null,
+      about:
+        'Software trainee moving to Pune next month. Looking for a shared room or a flatmate to hunt together.',
+      tags: ['Student', 'Night owl', 'Non-veg ok'],
+      status: 'open',
+      created_at: new Date(Date.now() - 1 * 864e5).toISOString(),
+    },
+    {
+      id: 'demo-flat-3',
+      user_id: 'demo-user-arjun',
+      poster_name: 'Arjun Mehta',
+      poster_email: 'arjun@demo.in',
+      kind: 'have_room',
+      city: 'Bengaluru',
+      locality: 'Koramangala',
+      budget: 11000,
+      move_in: null,
+      about:
+        'Spare room in a 2BHK, fully furnished. Flatmate should be okay with occasional guests on weekends.',
+      tags: ['Works from home', 'Guests ok', 'Vegetarian'],
+      status: 'open',
+      created_at: new Date(Date.now() - 5 * 36e5).toISOString(),
+    },
+  ],
+  interests: [],
+};
+
+function readDemoFlatStore(): DemoFlatmateStore {
+  try {
+    const raw = localStorage.getItem(DEMO_FLAT_KEY);
+    if (!raw) {
+      localStorage.setItem(DEMO_FLAT_KEY, JSON.stringify(DEMO_FLAT_SEED));
+      return structuredClone(DEMO_FLAT_SEED);
+    }
+    return JSON.parse(raw) as DemoFlatmateStore;
+  } catch {
+    return structuredClone(DEMO_FLAT_SEED);
+  }
+}
+function writeDemoFlatStore(store: DemoFlatmateStore) {
+  localStorage.setItem(DEMO_FLAT_KEY, JSON.stringify(store));
+}
+
+export async function getFlatmatePosts(filters?: {
+  kind?: FlatmateKind;
+  city?: string;
+}): Promise<FlatmatePost[]> {
+  const sb = getSupabase();
+  if (sb) {
+    let q = sb
+      .from('flatmate_posts')
+      .select('*')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+    if (filters?.kind) q = q.eq('kind', filters.kind);
+    if (filters?.city) q = q.ilike('city', filters.city);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []) as FlatmatePost[];
+  }
+  return readDemoFlatStore().posts.filter(
+    (p) =>
+      p.status === 'open' &&
+      (!filters?.kind || p.kind === filters.kind) &&
+      (!filters?.city ||
+        p.city.toLowerCase() === filters.city.trim().toLowerCase())
+  );
+}
+
+export async function getMyFlatmatePosts(userId: string): Promise<FlatmatePost[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('flatmate_posts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as FlatmatePost[];
+  }
+  return readDemoFlatStore().posts.filter((p) => p.user_id === userId);
+}
+
+export async function createFlatmatePost(input: {
+  user_id: string;
+  poster_name: string;
+  poster_email?: string;
+  kind: FlatmateKind;
+  city: string;
+  locality?: string;
+  budget: number;
+  move_in?: string;
+  about?: string;
+  tags: string[];
+}): Promise<FlatmatePost> {
+  const sb = getSupabase();
+  if (sb) {
+    const { poster_email: _ignored, ...row } = input;
+    const { data, error } = await sb
+      .from('flatmate_posts')
+      .insert({
+        ...row,
+        locality: input.locality || null,
+        move_in: input.move_in || null,
+        about: input.about || null,
+      })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as FlatmatePost;
+  }
+  const store = readDemoFlatStore();
+  const post: FlatmatePost = {
+    id: `demo-flat-${Date.now()}`,
+    user_id: input.user_id,
+    poster_name: input.poster_name,
+    poster_email: input.poster_email,
+    kind: input.kind,
+    city: input.city,
+    locality: input.locality || null,
+    budget: input.budget,
+    move_in: input.move_in || null,
+    about: input.about || null,
+    tags: input.tags,
+    status: 'open',
+    created_at: new Date().toISOString(),
+  };
+  store.posts.unshift(post);
+  writeDemoFlatStore(store);
+  return post;
+}
+
+export async function setFlatmatePostStatus(
+  id: string,
+  status: 'open' | 'closed'
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('flatmate_posts').update({ status }).eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const store = readDemoFlatStore();
+  store.posts = store.posts.map((p) => (p.id === id ? { ...p, status } : p));
+  writeDemoFlatStore(store);
+}
+
+export async function deleteFlatmatePost(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('flatmate_posts').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const store = readDemoFlatStore();
+  store.posts = store.posts.filter((p) => p.id !== id);
+  store.interests = store.interests.filter((i) => i.post_id !== id);
+  writeDemoFlatStore(store);
+}
+
+const ALREADY_INTERESTED_MSG = "You've already shown interest in this post.";
+
+export async function expressInterest(input: {
+  post_id: string;
+  seeker_id: string;
+  seeker_name: string;
+  message?: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('flatmate_interests').insert({
+      post_id: input.post_id,
+      seeker_id: input.seeker_id,
+      seeker_name: input.seeker_name,
+      message: input.message || null,
+    });
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new Error(ALREADY_INTERESTED_MSG);
+      }
+      throw error;
+    }
+    return;
+  }
+  const store = readDemoFlatStore();
+  if (
+    store.interests.some(
+      (i) => i.post_id === input.post_id && i.seeker_id === input.seeker_id
+    )
+  ) {
+    throw new Error(ALREADY_INTERESTED_MSG);
+  }
+  store.interests.unshift({
+    id: `demo-int-${Date.now()}`,
+    post_id: input.post_id,
+    seeker_id: input.seeker_id,
+    seeker_name: input.seeker_name,
+    message: input.message || null,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  });
+  writeDemoFlatStore(store);
+}
+
+function attachInterestContext(
+  interests: FlatmateInterest[],
+  posts: FlatmatePost[]
+): FlatmateInterest[] {
+  const byId = new Map(posts.map((p) => [p.id, p]));
+  return interests.map((i) => {
+    const p = byId.get(i.post_id);
+    return {
+      ...i,
+      post_kind: p?.kind,
+      post_city: p?.city,
+      post_locality: p?.locality,
+      post_budget: p?.budget,
+      poster_name: p?.poster_name,
+    };
+  });
+}
+
+// Interests received on one of my posts
+export async function getInterestsForPost(
+  postId: string
+): Promise<FlatmateInterest[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('flatmate_interests')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as FlatmateInterest[];
+  }
+  return readDemoFlatStore().interests.filter((i) => i.post_id === postId);
+}
+
+// Interests I sent, with the post's context attached
+export async function getMyInterests(
+  seekerId: string
+): Promise<FlatmateInterest[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('flatmate_interests')
+      .select('*, flatmate_posts(kind, city, locality, budget, poster_name)')
+      .eq('seeker_id', seekerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => {
+      const post = r.flatmate_posts as {
+        kind: FlatmateKind;
+        city: string;
+        locality: string | null;
+        budget: number;
+        poster_name: string;
+      } | null;
+      const { flatmate_posts: _drop, ...rest } = r;
+      return {
+        ...(rest as unknown as FlatmateInterest),
+        post_kind: post?.kind,
+        post_city: post?.city,
+        post_locality: post?.locality,
+        post_budget: post?.budget,
+        poster_name: post?.poster_name,
+      };
+    });
+  }
+  const store = readDemoFlatStore();
+  return attachInterestContext(
+    store.interests.filter((i) => i.seeker_id === seekerId),
+    store.posts
+  );
+}
+
+export async function setInterestStatus(
+  id: string,
+  status: 'accepted' | 'declined'
+): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb
+      .from('flatmate_interests')
+      .update({ status })
+      .eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const store = readDemoFlatStore();
+  store.interests = store.interests.map((i) =>
+    i.id === id ? { ...i, status } : i
+  );
+  writeDemoFlatStore(store);
+}
+
+// After an interest is accepted, reveal the other party's contact.
+// Real DB: guarded RPC (accepted + participant only). Demo: poster's
+// stored demo email, or the demo bachelor's inbox for seekers.
+export async function getMatchContact(
+  interestId: string,
+  currentUserId: string
+): Promise<{ email: string; full_name: string } | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb.rpc('flatmate_match_contact', {
+      p_interest_id: interestId,
+    });
+    const row = (data as { email: string; full_name: string }[] | null)?.[0];
+    return row ?? null;
+  }
+  const store = readDemoFlatStore();
+  const interest = store.interests.find((i) => i.id === interestId);
+  if (!interest || interest.status !== 'accepted') return null;
+  const post = store.posts.find((p) => p.id === interest.post_id);
+  if (!post) return null;
+  if (currentUserId === interest.seeker_id) {
+    // Seeker asking → reveal the poster
+    return post.poster_email
+      ? { email: post.poster_email, full_name: post.poster_name }
+      : null;
+  }
+  // Poster asking → the demo seeker is the demo bachelor
+  return { email: 'bachelor@demo.in', full_name: interest.seeker_name };
 }
