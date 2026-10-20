@@ -1,9 +1,6 @@
 import type { MetadataRoute } from "next";
+import { connection } from "next/server";
 import { getSupabase } from "@/lib/supabase";
-
-// Regenerate hourly so newly approved listings join the sitemap without
-// waiting for a redeploy.
-export const revalidate = 3600;
 
 const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bachelor-nest.vercel.app";
 const base = site.replace(/\/$/, "");
@@ -33,6 +30,9 @@ async function listingUrls(): Promise<MetadataRoute.Sitemap> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Generated per request (Cache Components mode forbids the revalidate
+  // segment export here) so newly approved listings appear immediately.
+  await connection();
   const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
