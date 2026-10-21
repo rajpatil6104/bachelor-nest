@@ -10,16 +10,7 @@ import path from 'path';
 // via the request_email_otp() function (rate-limited per email).
 
 // Best-effort per-IP throttle (the DB also rate-limits per email).
-const ipHits = new Map<string, number[]>();
-function ipAllowed(ip: string): boolean {
-  const now = Date.now();
-  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < 3600_000);
-  if (hits.length >= 20) return false;
-  hits.push(now);
-  ipHits.set(ip, hits);
-  if (ipHits.size > 2000) ipHits.clear();
-  return true;
-}
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 function otpEmailHtml(code: string, hasLogo: boolean): string {
   const logoBlock = hasLogo
@@ -55,8 +46,7 @@ This code expires in 10 minutes. If you didn't request this, you can safely igno
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (!ipAllowed(ip)) {
+  if (!rateLimitOk(`otp-send:${clientIp(req)}`, 20)) {
     return NextResponse.json(
       { ok: false, message: 'Too many requests. Please try again later.' },
       { status: 429 }

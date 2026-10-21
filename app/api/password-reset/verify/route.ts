@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createHash, randomBytes } from 'crypto';
 import { findUserByEmail, getAdminClient } from '@/lib/supabase-admin';
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 // Step 2 of forgot-password: verifies the 6-digit code via the same
 // verify_email_otp() function as registration. On success it mints a
@@ -11,6 +12,12 @@ import { findUserByEmail, getAdminClient } from '@/lib/supabase-admin';
 // together with a server-issued token — the OTP alone can't set it.
 
 export async function POST(req: NextRequest) {
+  if (!rateLimitOk(`pwreset-verify:${clientIp(req)}`, 30)) {
+    return NextResponse.json(
+      { ok: false, message: 'Too many attempts. Please try again later.' },
+      { status: 429 }
+    );
+  }
   let body: { email?: string; code?: string };
   try {
     body = await req.json();

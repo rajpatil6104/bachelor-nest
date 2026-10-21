@@ -14,20 +14,10 @@ import { mailConfigured, sendBrandedEmail } from '@/lib/server-mail';
 // completed.
 
 // Best-effort per-IP throttle (the DB also rate-limits per email).
-const ipHits = new Map<string, number[]>();
-function ipAllowed(ip: string): boolean {
-  const now = Date.now();
-  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < 3600_000);
-  if (hits.length >= 20) return false;
-  hits.push(now);
-  ipHits.set(ip, hits);
-  if (ipHits.size > 2000) ipHits.clear();
-  return true;
-}
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (!ipAllowed(ip)) {
+  if (!rateLimitOk(`pwreset-request:${clientIp(req)}`, 20)) {
     return NextResponse.json(
       { ok: false, message: 'Too many requests. Please try again later.' },
       { status: 429 }

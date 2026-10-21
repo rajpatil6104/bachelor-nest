@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { esc, sendBrandedEmail } from '@/lib/server-mail';
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 // Sends the "you're verified" email from the app's Gmail account.
 // Only admins can call this (the caller's Supabase JWT is validated and
@@ -9,6 +10,9 @@ import { esc, sendBrandedEmail } from '@/lib/server-mail';
 // lib/server-mail.ts.
 
 export async function POST(req: NextRequest) {
+  if (!rateLimitOk(`notify:${clientIp(req)}`, 60)) {
+    return NextResponse.json({ sent: false, reason: 'rate-limited' }, { status: 429 });
+  }
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) {
     return NextResponse.json({ sent: false, reason: 'unauthorized' }, { status: 401 });

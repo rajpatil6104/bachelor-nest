@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { esc, mailConfigured, sendBrandedEmail } from '@/lib/server-mail';
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 // Event emails for the visit lifecycle + vacancy alerts, sent from the
 // app's Gmail account:
@@ -25,6 +26,9 @@ const firstName = (full: string | null | undefined) =>
   (full ?? 'there').trim().split(/\s+/)[0] || 'there';
 
 export async function POST(req: NextRequest) {
+  if (!rateLimitOk(`notify-event:${clientIp(req)}`, 120)) {
+    return NextResponse.json({ sent: false, reason: 'rate-limited' }, { status: 429 });
+  }
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) {
     return NextResponse.json({ sent: false, reason: 'unauthorized' }, { status: 401 });

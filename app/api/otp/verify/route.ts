@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
+import { clientIp, rateLimitOk } from '@/lib/rate-limit';
 
 // Verifies a 6-digit OTP previously issued by /api/otp/send.
 // The code itself never leaves the server unhashed; verification happens
 // inside the verify_email_otp() SECURITY DEFINER function.
 
 export async function POST(req: NextRequest) {
+  // The DB locks a code after 5 wrong tries; this IP cap is a second layer.
+  if (!rateLimitOk(`otp-verify:${clientIp(req)}`, 30)) {
+    return NextResponse.json(
+      { ok: false, message: 'Too many attempts. Please try again later.' },
+      { status: 429 }
+    );
+  }
   let body: { email?: string; code?: string };
   try {
     body = await req.json();

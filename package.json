@@ -13,8 +13,8 @@
     "leaflet": "^1.9.4",
     "next": "16.4.2",
     "nodemailer": "^10.1.7",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
