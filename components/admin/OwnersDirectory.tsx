@@ -394,6 +394,12 @@ export default function OwnersDirectory() {
                                 {l.status}
                               </span>
                               <Link
+                                href={`/admin/edit-listing/${l.id}`}
+                                className="shrink-0 text-sm font-medium text-brand-600 hover:underline"
+                              >
+                                Edit
+                              </Link>
+                              <Link
                                 href={`/listing/${l.id}`}
                                 className="shrink-0 text-sm font-medium text-brand-600 hover:underline"
                               >

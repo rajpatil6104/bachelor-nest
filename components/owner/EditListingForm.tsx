@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import OwnerGate from '@/components/owner/OwnerGate';
 import LocationPicker from '@/components/LocationPicker';
-import { getListing, updateListing, uploadListingPhotos, RoomEditInput } from '@/lib/db';
+import { getAdminListing, getListing, updateListing, uploadListingPhotos, RoomEditInput } from '@/lib/db';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import {
@@ -24,7 +24,13 @@ const labelCls = 'mb-1 block text-sm font-semibold';
 const ALL_KNOWN = [...AMENITY_CATEGORIES.flatMap((c) => c.items), ...SERVICE_OPTIONS.map((s) => s.id)];
 const RENT_CYCLES = ['monthly', 'quarterly', 'half-yearly', 'yearly'] as const;
 
-export default function EditListingForm({ listingId: id }: { listingId: string }) {
+export default function EditListingForm({
+  listingId: id,
+  adminMode = false,
+}: {
+  listingId: string;
+  adminMode?: boolean;
+}) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -53,7 +59,7 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
   const isCustomUnits = listing?.type === 'flat' || listing?.type === 'room';
 
   useEffect(() => {
-    getListing(id).then((l) => {
+    (adminMode ? getAdminListing : getListing)(id).then((l) => {
       if (!l) {
         setLoadError('Listing not found.');
         return;
@@ -81,7 +87,7 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
       setRules(l.house_rules);
       setPhotos(l.photos);
     });
-  }, [id]);
+  }, [id, adminMode]);
 
   const customAmenities = useMemo(
     () => amenities.filter((a) => !ALL_KNOWN.includes(a)),
@@ -158,7 +164,9 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
           rent_cycle: rentCycle,
           photos: [...photos, ...uploaded],
         },
-        roomRows
+        roomRows,
+        // Admin edits keep the listing's status; owner edits re-verify.
+        { keepStatus: adminMode }
       );
       setSaved(true);
       window.scrollTo({ top: 0 });
@@ -172,18 +180,35 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
   if (authLoading || (!listing && !loadError)) {
     return <p className="p-8 text-center text-sm text-zinc-500">Loading listing…</p>;
   }
+  if (adminMode && (!user || user.role !== 'admin')) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <div className="text-5xl">🛡️</div>
+        <h1 className="mt-4 text-xl font-bold">Admins only</h1>
+        <p className="mt-2 text-sm text-zinc-500">
+          This page edits an owner's listing as an admin. Log in with an admin account.
+        </p>
+        <Link href="/admin" className="mt-6 inline-block font-medium text-brand-600 hover:underline">
+          ← Back to admin panel
+        </Link>
+      </div>
+    );
+  }
   if (loadError || !listing) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <div className="text-5xl">🔍</div>
         <h1 className="mt-4 text-xl font-bold">{loadError || 'Listing not found'}</h1>
-        <Link href="/owner" className="mt-6 inline-block font-medium text-brand-600 hover:underline">
-          ← Back to dashboard
+        <Link
+          href={adminMode ? '/admin' : '/owner'}
+          className="mt-6 inline-block font-medium text-brand-600 hover:underline"
+        >
+          {adminMode ? '← Back to admin panel' : '← Back to dashboard'}
         </Link>
       </div>
     );
   }
-  if (user && listing.owner_id !== user.id) {
+  if (!adminMode && user && listing.owner_id !== user.id) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <div className="text-5xl">🔒</div>
@@ -203,35 +228,47 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
           ✓
         </div>
         <h1 className="mt-4 text-2xl font-bold">Changes saved!</h1>
-        <p className="mt-2 text-zinc-500">
-          Your listing has been sent for <b>re-verification</b>. It stays hidden
-          from tenants until an admin approves the changes — usually within
-          24–48 hours.
-        </p>
+        {adminMode ? (
+          <p className="mt-2 text-zinc-500">
+            The listing was updated as an admin edit, so its status is{' '}
+            <b>unchanged</b> — a live listing stays live and a pending one stays
+            pending. No re-verification needed.
+          </p>
+        ) : (
+          <p className="mt-2 text-zinc-500">
+            Your listing has been sent for <b>re-verification</b>. It stays hidden
+            from tenants until an admin approves the changes — usually within
+            24–48 hours.
+          </p>
+        )}
         <Link
-          href="/owner"
+          href={adminMode ? '/admin' : '/owner'}
           className="mt-6 inline-block rounded-2xl bg-brand-600 px-8 py-3 font-semibold text-white hover:bg-brand-700"
         >
-          Back to dashboard
+          {adminMode ? 'Back to admin panel' : 'Back to dashboard'}
         </Link>
       </div>
     );
   }
 
-  return (
-    <OwnerGate>
+  const formEl = (
       <form onSubmit={handleSave} className="mx-auto max-w-2xl space-y-8 px-4 py-6">
         <div>
-          <Link href="/owner" className="text-sm font-medium text-brand-600 hover:underline">
-            ← Dashboard
+          <Link
+            href={adminMode ? '/admin' : '/owner'}
+            className="text-sm font-medium text-brand-600 hover:underline"
+          >
+            {adminMode ? '← Admin panel' : '← Dashboard'}
           </Link>
           <h1 className="mt-2 text-2xl font-bold">Edit listing</h1>
           <p className="mt-1 text-sm text-zinc-500">
             <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium dark:bg-zinc-800">
               {TYPE_LABELS[listing.type]}
             </span>{' '}
-            · Saving sends it back for admin verification — it will be hidden
-            from tenants until approved again.
+            ·{' '}
+            {adminMode
+              ? 'You are editing as admin — changes apply immediately and the listing keeps its current status.'
+              : 'Saving sends it back for admin verification — it will be hidden from tenants until approved again.'}
           </p>
         </div>
 
@@ -478,16 +515,17 @@ export default function EditListingForm({ listingId: id }: { listingId: string }
         )}
 
         <div className="flex gap-3 pb-8">
-          <button type="button" onClick={() => router.push('/owner')}
+          <button type="button" onClick={() => router.push(adminMode ? '/admin' : '/owner')}
             className="rounded-2xl border border-zinc-300 px-6 py-3.5 font-semibold dark:border-zinc-700">
             Cancel
           </button>
           <button type="submit" disabled={saving}
             className="flex-1 rounded-2xl bg-red-500 py-3.5 text-lg font-bold text-white hover:bg-red-600 disabled:opacity-50">
-            {saving ? 'Saving…' : 'Save & send for verification'}
+            {saving ? 'Saving…' : adminMode ? 'Save changes' : 'Save & send for verification'}
           </button>
         </div>
       </form>
-    </OwnerGate>
   );
+
+  return adminMode ? formEl : <OwnerGate>{formEl}</OwnerGate>;
 }

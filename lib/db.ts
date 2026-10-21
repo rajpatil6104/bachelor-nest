@@ -72,6 +72,23 @@ export async function getListing(id: string): Promise<Listing | null> {
   return found ? withDemoRatings([found])[0] : null;
 }
 
+// Admin variant for the edit form: any status, no ratings merge, and in
+// demo mode even a suspended owner's listings stay editable (tenant reads
+// hide them; the admin directory must not).
+export async function getAdminListing(id: string): Promise<Listing | null> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data, error } = await sb
+      .from('listings')
+      .select('*, rooms(*)')
+      .eq('id', id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as Listing;
+  }
+  return applyDemoListingState(MOCK_LISTINGS).find((l) => l.id === id) ?? null;
+}
+
 function filterMock(filters: SearchFilters): Listing[] {
   return MOCK_LISTINGS.filter((l) => {
     if (filters.city && !l.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
@@ -152,13 +169,19 @@ export interface RoomEditInput {
 export async function updateListing(
   id: string,
   patch: ListingEditPatch,
-  rooms: RoomEditInput[]
+  rooms: RoomEditInput[],
+  opts?: { keepStatus?: boolean }
 ): Promise<void> {
   const sb = getSupabase();
   if (sb) {
+    // Owner edits go back to 'pending' for re-verification (Raj's rule).
+    // Admin edits (keepStatus) preserve the listing's current status —
+    // the admin IS the verifier, so a fix shouldn't take a live listing
+    // down or silently approve a pending one.
+    const update = opts?.keepStatus ? { ...patch } : { ...patch, status: 'pending' as const };
     const { error } = await sb
       .from('listings')
-      .update({ ...patch, status: 'pending' })
+      .update(update)
       .eq('id', id);
     if (error) throw error;
     const { error: delError } = await sb.from('rooms').delete().eq('listing_id', id);
@@ -178,7 +201,7 @@ export async function updateListing(
   edits[id] = {
     ...base,
     ...patch,
-    status: 'pending',
+    status: opts?.keepStatus ? base.status : 'pending',
     rooms: rooms.map(
       (r, i): Room => ({ id: `demo-room-${id}-${i}`, listing_id: id, ...r })
     ),
