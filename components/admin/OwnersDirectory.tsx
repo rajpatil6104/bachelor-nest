@@ -134,8 +134,11 @@ export default function OwnersDirectory() {
       } else {
         setNote(`✗ ${o.full_name ?? 'Owner'}'s verification was rejected.`);
       }
-    } catch {
-      setNoteError('Could not save that decision. Please try again.');
+    } catch (err) {
+      const msg = (err as { message?: string } | null)?.message;
+      setNoteError(
+        msg ? `Could not save that decision: ${msg}` : 'Could not save that decision. Please try again.'
+      );
     } finally {
       setActing(null);
     }
@@ -160,11 +163,14 @@ export default function OwnersDirectory() {
           : `✓ ${o.full_name ?? 'Owner'} reinstated — their listings are visible again.`
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
+      // Supabase errors are plain objects carrying a message, not Errors.
+      const msg = (err as { message?: string } | null)?.message ?? '';
       setNoteError(
         /suspended/.test(msg)
           ? 'The database is missing the suspension column — run supabase/migration_owner_suspend.sql in the Supabase SQL editor, then try again.'
-          : 'Could not change suspension. Please try again.'
+          : msg
+            ? `Could not change suspension: ${msg}`
+            : 'Could not change suspension. Please try again.'
       );
     } finally {
       setActing(null);

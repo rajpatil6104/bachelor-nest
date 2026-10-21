@@ -53,3 +53,8 @@ create policy "admins moderate listings"
 create policy "admins read all rooms"
   on public.rooms for select
   using (public.is_admin());
+
+create policy "admins manage rooms"
+  on public.rooms for all
+  using (public.is_admin())
+  with check (public.is_admin());

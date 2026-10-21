@@ -171,7 +171,10 @@ export default function EditListingForm({
       setSaved(true);
       window.scrollTo({ top: 0 });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save your changes.');
+      // Supabase errors are plain objects carrying a message, not Error
+      // instances — read it directly or the admin only sees a generic text.
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg ? `Could not save your changes: ${msg}` : 'Could not save your changes.');
     } finally {
       setSaving(false);
     }

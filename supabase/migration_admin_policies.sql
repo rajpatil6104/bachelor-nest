@@ -37,3 +37,10 @@ create policy "admins moderate listings"
 -- Admins can read rooms of any listing (to review pending ones)
 create policy "admins read all rooms"
   on public.rooms for select using (public.is_admin());
+
+-- Admins can also write rooms — saving an admin listing edit rewrites
+-- the listing's rooms (delete + re-insert), like owner edits do.
+create policy "admins manage rooms"
+  on public.rooms for all
+  using (public.is_admin())
+  with check (public.is_admin());
