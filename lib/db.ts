@@ -1244,7 +1244,7 @@ export async function getPendingKyc(): Promise<OwnerProfile[]> {
   return [...fromProfile, ...fromDirectory];
 }
 
-export async function setKycStatus(userId: string, status: 'verified' | 'rejected', label?: string): Promise<void> {
+export async function setKycStatus(userId: string, status: 'verified' | 'rejected', label?: string | null): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     const { error } = await sb.from('profiles').update({ kyc_status: status }).eq('id', userId);
@@ -1442,7 +1442,7 @@ export async function getAdminOwners(): Promise<AdminOwner[]> {
   return composeAdminOwners(profiles, applyDemoListingState(MOCK_LISTINGS), reportCountByListing);
 }
 
-export async function setOwnerSuspended(ownerId: string, suspended: boolean, label?: string): Promise<void> {
+export async function setOwnerSuspended(ownerId: string, suspended: boolean, label?: string | null): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     const { error } = await sb.from('profiles').update({ suspended }).eq('id', ownerId);
@@ -1465,7 +1465,7 @@ export async function setOwnerSuspended(ownerId: string, suspended: boolean, lab
 // the server — the route answers 503 without it and we surface that.
 export async function deleteOwnerAccount(
   ownerId: string,
-  label?: string
+  label?: string | null
 ): Promise<{ ok: boolean; message?: string }> {
   const sb = getSupabase();
   if (!sb) {
