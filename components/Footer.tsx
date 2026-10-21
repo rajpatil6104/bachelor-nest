@@ -27,6 +27,14 @@ const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] =
       { href: '/register', label: 'Sign up' },
     ],
   },
+  {
+    heading: 'Legal',
+    links: [
+      { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/terms', label: 'Terms of Use' },
+      { href: '/cookies', label: 'Cookie Policy' },
+    ],
+  },
 ];
 
 // Contact details are optional: set NEXT_PUBLIC_CONTACT_EMAIL /
@@ -38,7 +46,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-navy-950">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
           <Link href="/" className="inline-flex items-center gap-2">
             <img src="/logo.png" alt="BachelorsNest logo" className="h-9 w-auto" />
