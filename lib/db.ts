@@ -28,11 +28,15 @@ function readDemoDeleted(): string[] {
 function writeDemoDeleted(ids: string[]) {
   localStorage.setItem(DEMO_DELETED_KEY, JSON.stringify(ids));
 }
-// Applies demo edits + hides demo-deleted listings
+// Applies demo edits + hides demo-deleted listings and listings whose
+// owner was deleted from the admin Owners directory
 export function applyDemoListingState(listings: Listing[]): Listing[] {
   const edits = readDemoEdits();
   const deleted = new Set(readDemoDeleted());
-  return listings.filter((l) => !deleted.has(l.id)).map((l) => edits[l.id] ?? l);
+  const deletedOwners = new Set(readDemoDeletedOwners());
+  return listings
+    .filter((l) => !deleted.has(l.id) && !deletedOwners.has(l.owner_id))
+    .map((l) => edits[l.id] ?? l);
 }
 export async function getListings(filters: SearchFilters = {}): Promise<Listing[]> {
   const sb = getSupabase();
@@ -49,7 +53,7 @@ export async function getListings(filters: SearchFilters = {}): Promise<Listing[
       listings = listings.filter((l) => l.rooms.some((r) => r.room_type === filters.roomType));
     return withLiveRatings(sb, listings);
   }
-  return withDemoRatings(applyDemoListingState(filterMock(filters)));
+  return withDemoRatings(hideDemoSuspendedOwners(applyDemoListingState(filterMock(filters))));
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -64,7 +68,7 @@ export async function getListing(id: string): Promise<Listing | null> {
     const [rated] = await withLiveRatings(sb, [data as Listing]);
     return rated;
   }
-  const found = applyDemoListingState(MOCK_LISTINGS).find((l) => l.id === id) ?? null;
+  const found = hideDemoSuspendedOwners(applyDemoListingState(MOCK_LISTINGS)).find((l) => l.id === id) ?? null;
   return found ? withDemoRatings([found])[0] : null;
 }
 
@@ -1104,6 +1108,8 @@ export interface OwnerProfile {
   email: string | null;
   kyc_status: string;
   kyc_docs: string[];
+  created_at?: string;
+  suspended?: boolean;
 }
 
 const DEMO_PROFILE_KEY = 'bn-demo-profile';
@@ -1193,7 +1199,13 @@ export async function getPendingKyc(): Promise<OwnerProfile[]> {
     return (data ?? []) as OwnerProfile[];
   }
   const p = readDemoProfile();
-  return p.kyc_status === 'pending' ? [p] : [];
+  const fromProfile = p.kyc_status === 'pending' ? [p] : [];
+  const deleted = new Set(readDemoDeletedOwners());
+  const overrides = readDemoOwnerKycOverrides();
+  const fromDirectory = DEMO_OWNERS.filter(
+    (o) => !deleted.has(o.id) && (overrides[o.id] ?? o.kyc_status) === 'pending'
+  );
+  return [...fromProfile, ...fromDirectory];
 }
 
 export async function setKycStatus(userId: string, status: 'verified' | 'rejected'): Promise<void> {
@@ -1207,6 +1219,14 @@ export async function setKycStatus(userId: string, status: 'verified' | 'rejecte
   if (p.id === userId) {
     localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify({ ...p, kyc_status: status }));
   }
+  // Keep the admin Owners directory in sync for its demo seed owners.
+  if (DEMO_OWNERS.some((o) => o.id === userId)) {
+    const overrides = readDemoOwnerKycOverrides();
+    overrides[userId] = status;
+    try {
+      localStorage.setItem(DEMO_OWNER_KYC_KEY, JSON.stringify(overrides));
+    } catch {}
+  }
 }
 
 export async function getSignedDocUrl(path: string): Promise<string> {
@@ -1215,6 +1235,210 @@ export async function getSignedDocUrl(path: string): Promise<string> {
   const { data, error } = await sb.storage.from('owner-docs').createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
+}
+
+// ---- Admin: owners directory (list, suspend, delete) ----
+
+// Defensive on purpose: queried separately from getOwnerProfile so a
+// database that hasn't run migration_owner_suspend.sql yet (no `suspended`
+// column) just reads as "not suspended" instead of breaking login.
+export async function getOwnerSuspended(userId: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return readDemoSuspendedOwners().includes(userId);
+  try {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('suspended')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return false;
+    return !!(data as { suspended?: boolean }).suspended;
+  } catch {
+    return false;
+  }
+}
+
+const DEMO_SUSPENDED_OWNERS_KEY = 'bn-demo-owner-suspended';
+const DEMO_DELETED_OWNERS_KEY = 'bn-demo-owner-deleted';
+const DEMO_OWNER_KYC_KEY = 'bn-demo-owner-kyc';
+
+function readDemoIdSet(key: string): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) ?? '[]');
+    return Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function writeDemoIdSet(key: string, ids: string[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(ids));
+  } catch {}
+}
+export function readDemoSuspendedOwners(): string[] {
+  return readDemoIdSet(DEMO_SUSPENDED_OWNERS_KEY);
+}
+export function readDemoDeletedOwners(): string[] {
+  return readDemoIdSet(DEMO_DELETED_OWNERS_KEY);
+}
+function readDemoOwnerKycOverrides(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = JSON.parse(localStorage.getItem(DEMO_OWNER_KYC_KEY) ?? '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+// Tenant-facing demo reads hide suspended owners' listings, mirroring the
+// live RLS policy (migration_owner_suspend.sql). Admin/owner reads don't.
+export function hideDemoSuspendedOwners(listings: Listing[]): Listing[] {
+  const suspended = new Set(readDemoSuspendedOwners());
+  if (suspended.size === 0) return listings;
+  return listings.filter((l) => !suspended.has(l.owner_id));
+}
+
+export interface AdminOwner extends OwnerProfile {
+  listings: Listing[];
+  liveCount: number;
+  pendingCount: number;
+  reportCount: number;
+}
+
+// The mock listings belong to owner-1/2/3; owner-4 is a pending-KYC owner
+// with no listings yet, so the directory's verify flow works in demo too.
+const DEMO_OWNERS: OwnerProfile[] = [
+  { id: 'owner-1', role: 'owner', full_name: 'Rajesh Kumar', phone: '+91 98220 11111', email: 'rajesh.kumar@demo.in', kyc_status: 'verified', kyc_docs: [], created_at: '2026-08-14T10:30:00Z' },
+  { id: 'owner-2', role: 'owner', full_name: 'Amit Verma', phone: '+91 98220 22222', email: 'amit.verma@demo.in', kyc_status: 'verified', kyc_docs: [], created_at: '2026-09-02T09:15:00Z' },
+  { id: 'owner-3', role: 'owner', full_name: 'Suresh Patil', phone: '+91 98220 33333', email: 'suresh.patil@demo.in', kyc_status: 'verified', kyc_docs: [], created_at: '2026-09-27T14:45:00Z' },
+  { id: 'owner-4', role: 'owner', full_name: 'Priya Nair', phone: '+91 98220 44444', email: 'priya.nair@demo.in', kyc_status: 'pending', kyc_docs: [], created_at: '2026-10-18T08:20:00Z' },
+];
+
+function ownerRank(o: OwnerProfile): number {
+  if (o.kyc_status === 'pending') return 0;
+  if (o.suspended) return 1;
+  if (o.kyc_status === 'verified') return 2;
+  return 3; // rejected
+}
+
+function composeAdminOwners(
+  profiles: OwnerProfile[],
+  allListings: Listing[],
+  reportCountByListing: Map<string, number>
+): AdminOwner[] {
+  const byOwner = new Map<string, Listing[]>();
+  for (const l of allListings) {
+    const arr = byOwner.get(l.owner_id) ?? [];
+    arr.push(l);
+    byOwner.set(l.owner_id, arr);
+  }
+  return profiles
+    .map((p) => {
+      const listings = byOwner.get(p.id) ?? [];
+      return {
+        ...p,
+        listings,
+        liveCount: listings.filter((l) => l.status === 'approved').length,
+        pendingCount: listings.filter((l) => l.status === 'pending').length,
+        reportCount: listings.reduce((sum, l) => sum + (reportCountByListing.get(l.id) ?? 0), 0),
+      };
+    })
+    .sort((a, b) => ownerRank(a) - ownerRank(b) || (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+}
+
+export async function getAdminOwners(): Promise<AdminOwner[]> {
+  const sb = getSupabase();
+  if (sb) {
+    const { data: profiles, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('role', 'owner');
+    if (error) throw error;
+    const { data: listings, error: lErr } = await sb.from('listings').select('*, rooms(*)');
+    if (lErr) throw lErr;
+    // Reports are a bonus signal — never let a missing reports table
+    // (migration not run) break the whole directory.
+    const reportCountByListing = new Map<string, number>();
+    try {
+      const { data: reports } = await sb.from('reports').select('listing_id');
+      for (const r of (reports ?? []) as { listing_id: string }[]) {
+        reportCountByListing.set(r.listing_id, (reportCountByListing.get(r.listing_id) ?? 0) + 1);
+      }
+    } catch { /* counts stay 0 */ }
+    return composeAdminOwners(
+      (profiles ?? []) as OwnerProfile[],
+      (listings ?? []) as Listing[],
+      reportCountByListing
+    );
+  }
+  // Demo mode: seed owners + localStorage moderation state.
+  const suspended = new Set(readDemoSuspendedOwners());
+  const deleted = new Set(readDemoDeletedOwners());
+  const kycOverrides = readDemoOwnerKycOverrides();
+  const profiles = DEMO_OWNERS.filter((o) => !deleted.has(o.id)).map((o) => ({
+    ...o,
+    kyc_status: kycOverrides[o.id] ?? o.kyc_status,
+    suspended: suspended.has(o.id),
+  }));
+  const reportCountByListing = new Map<string, number>();
+  try {
+    const raw = JSON.parse(localStorage.getItem('bn-demo-reports') ?? '[]');
+    if (Array.isArray(raw)) {
+      for (const r of raw) {
+        if (r && typeof r.listing_id === 'string') {
+          reportCountByListing.set(r.listing_id, (reportCountByListing.get(r.listing_id) ?? 0) + 1);
+        }
+      }
+    }
+  } catch { /* counts stay 0 */ }
+  return composeAdminOwners(profiles, applyDemoListingState(MOCK_LISTINGS), reportCountByListing);
+}
+
+export async function setOwnerSuspended(ownerId: string, suspended: boolean): Promise<void> {
+  const sb = getSupabase();
+  if (sb) {
+    const { error } = await sb.from('profiles').update({ suspended }).eq('id', ownerId);
+    if (error) throw error;
+    return;
+  }
+  const set = new Set(readDemoSuspendedOwners());
+  if (suspended) set.add(ownerId);
+  else set.delete(ownerId);
+  writeDemoIdSet(DEMO_SUSPENDED_OWNERS_KEY, [...set]);
+}
+
+// Permanent: removes the auth account server-side (profile, listings and
+// rooms follow via ON DELETE CASCADE). Needs SUPABASE_SERVICE_ROLE_KEY on
+// the server — the route answers 503 without it and we surface that.
+export async function deleteOwnerAccount(
+  ownerId: string
+): Promise<{ ok: boolean; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) {
+    const set = new Set(readDemoDeletedOwners());
+    set.add(ownerId);
+    writeDemoIdSet(DEMO_DELETED_OWNERS_KEY, [...set]);
+    return { ok: true };
+  }
+  const { data } = await sb.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return { ok: false, message: 'You are not signed in.' };
+  try {
+    const res = await fetch('/api/admin/delete-owner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ownerId }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.ok) {
+      return { ok: false, message: body.message ?? 'Could not delete the account.' };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, message: 'Could not reach the server. Please try again.' };
+  }
 }
 
 // Upsert used by the owner OTP registration flow (profile may not exist yet).

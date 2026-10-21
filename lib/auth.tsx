@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getSupabase, isSupabaseConfigured } from './supabase';
-import { getOwnerProfile } from './db';
+import { getOwnerProfile, getOwnerSuspended } from './db';
 
 export type Role = 'owner' | 'tenant' | 'admin';
 
@@ -125,16 +125,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Owners can't log in until an admin verifies their ID
     if (authUser.role === 'owner') {
       const profile = await getOwnerProfile(authUser.id);
-      if (profile && profile.kyc_status !== 'verified') {
-        await sb.auth.signOut();
-        setUser(null);
-        return {
-          ok: false,
-          message:
-            profile.kyc_status === 'rejected'
-              ? 'Your owner verification was rejected. Please contact support.'
-              : "Your owner account is pending verification. We'll email you once approved — then you can log in.",
-        };
+      if (profile) {
+        // Suspended owners are locked out entirely (policy enforcement)
+        if (await getOwnerSuspended(authUser.id)) {
+          await sb.auth.signOut();
+          setUser(null);
+          return {
+            ok: false,
+            message:
+              'Your account has been suspended for violating platform policy. Please contact support if you think this is a mistake.',
+          };
+        }
+        if (profile.kyc_status !== 'verified') {
+          await sb.auth.signOut();
+          setUser(null);
+          return {
+            ok: false,
+            message:
+              profile.kyc_status === 'rejected'
+                ? 'Your owner verification was rejected. Please contact support.'
+                : "Your owner account is pending verification. We'll email you once approved — then you can log in.",
+          };
+        }
       }
     }
     setUser(authUser);

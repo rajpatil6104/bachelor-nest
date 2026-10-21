@@ -8,6 +8,7 @@ create table public.profiles (
   full_name text,
   phone text,
   verified boolean not null default false,
+  suspended boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -103,13 +104,31 @@ alter table public.reviews    enable row level security;
 alter table public.favorites  enable row level security;
 alter table public.alerts     enable row level security;
 
--- Public can read approved listings + their rooms
+-- Helper for the public policies below: is this owner suspended?
+-- SECURITY DEFINER so the check bypasses profiles RLS (recursion-proof,
+-- same pattern as public.is_admin() in the admin migrations).
+create or replace function public.is_suspended(p_owner_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = p_owner_id and suspended = true
+  );
+$$;
+
+-- Public can read approved listings of non-suspended owners + their rooms
 create policy "approved listings are public"
-  on public.listings for select using (status = 'approved');
+  on public.listings for select
+  using (status = 'approved' and not public.is_suspended(owner_id));
 create policy "rooms of approved listings are public"
   on public.rooms for select using (
     exists (select 1 from public.listings l
-            where l.id = rooms.listing_id and l.status = 'approved')
+            where l.id = rooms.listing_id and l.status = 'approved'
+              and not public.is_suspended(l.owner_id))
   );
 
 -- Owners manage their own listings and rooms

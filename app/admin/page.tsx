@@ -8,6 +8,7 @@ import { notifyEvent } from '@/lib/notify';
 import { useAuth } from '@/lib/auth';
 import KycReview from '@/components/admin/KycReview';
 import ReportsReview from '@/components/admin/ReportsReview';
+import OwnersDirectory from '@/components/admin/OwnersDirectory';
 import {
   Listing,
   ROOM_LABELS,
@@ -79,6 +80,7 @@ export default function AdminPage() {
 
       <KycReview />
       <ReportsReview />
+      <OwnersDirectory />
 
       {listings.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-12 text-center">
