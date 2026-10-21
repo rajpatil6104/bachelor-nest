@@ -35,11 +35,13 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
   const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
   function validateDetails(): string | null {
+    if (!agreed) return 'Please tick the box to accept the Terms of Use and Privacy Policy.';
     if (!firstName.trim() || !lastName.trim()) return 'Please enter your first and last name.';
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) return 'Please enter a valid 10-digit mobile number.';
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return 'Please enter a valid email address.';
@@ -356,6 +358,26 @@ export default function RegisterPage() {
                   You can log in after our team approves you.
                 </p>
               )}
+
+              <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                />
+                <span>
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-brand-600 underline dark:text-brand-400">
+                    Terms of Use
+                  </a>{' '}
+                  and{' '}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-brand-600 underline dark:text-brand-400">
+                    Privacy Policy
+                  </a>
+                  .
+                </span>
+              </label>
 
               {error && (
                 <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
