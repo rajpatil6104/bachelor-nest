@@ -37,7 +37,7 @@ export default function CookieConsent() {
       <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
         🍪 We use cookies only to keep you signed in and remember your
         preferences — no ads, no trackers. See our{' '}
-        <Link href="/cookies" className="font-medium text-brand-600 underline dark:text-brand-400">
+        <Link href="/cookies" className="font-medium text-brand-700 underline dark:text-brand-400">
           Cookie Policy
         </Link>
         .

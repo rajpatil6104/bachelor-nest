@@ -63,7 +63,7 @@ export default function Footer() {
                   📞{' '}
                   <a
                     href={`tel:${phone.replace(/[\s()-]/g, '')}`}
-                    className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {phone}
                   </a>
@@ -74,7 +74,7 @@ export default function Footer() {
                   ✉️{' '}
                   <a
                     href={`mailto:${email}`}
-                    className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {email}
                   </a>

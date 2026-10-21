@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       heading: `You're verified, ${esc(name)}!`,
       bodyHtml:
         `<p>Your owner account on <b>BachelorsNest</b> has been approved. You can now log in, ` +
-        `list your PG, hostel, flat or room — and reach thousands of bachelors looking for a stay.</p>` +
+        `list your PG, hostel, flat or room — and start reaching bachelors looking for a stay.</p>` +
         `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0fafa;border-radius:12px;margin-top:16px;">` +
         `<tr><td style="padding:16px 20px;font-size:13px;color:#0e7490;line-height:1.7;">` +
         `<b>What you can do next</b><br/>` +

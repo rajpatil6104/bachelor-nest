@@ -368,11 +368,11 @@ export default function RegisterPage() {
                 />
                 <span>
                   I agree to the{' '}
-                  <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-brand-600 underline dark:text-brand-400">
+                  <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-brand-700 underline dark:text-brand-400">
                     Terms of Use
                   </a>{' '}
                   and{' '}
-                  <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-brand-600 underline dark:text-brand-400">
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-brand-700 underline dark:text-brand-400">
                     Privacy Policy
                   </a>
                   .
