@@ -134,11 +134,24 @@ export async function setListingStatus(
   status: 'approved' | 'rejected'
 ): Promise<void> {
   const sb = getSupabase();
+  let title: string | null = null;
   if (sb) {
-    const { error } = await sb.from('listings').update({ status }).eq('id', id);
+    const { data, error } = await sb
+      .from('listings')
+      .update({ status })
+      .eq('id', id)
+      .select('title');
     if (error) throw error;
+    title = data?.[0]?.title ?? null;
+  } else {
+    // Demo mode: the admin page manages local state instead
+    title = applyDemoListingState(MOCK_LISTINGS).find((l) => l.id === id)?.title ?? null;
   }
-  // Demo mode: the admin page manages local state instead
+  await logAdminAction(
+    status === 'approved' ? 'listing.approved' : 'listing.rejected',
+    'listing',
+    title
+  );
 }
 
 export interface ListingEditPatch {
@@ -1231,11 +1244,16 @@ export async function getPendingKyc(): Promise<OwnerProfile[]> {
   return [...fromProfile, ...fromDirectory];
 }
 
-export async function setKycStatus(userId: string, status: 'verified' | 'rejected'): Promise<void> {
+export async function setKycStatus(userId: string, status: 'verified' | 'rejected', label?: string): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     const { error } = await sb.from('profiles').update({ kyc_status: status }).eq('id', userId);
     if (error) throw error;
+    await logAdminAction(
+      status === 'verified' ? 'owner.kyc_verified' : 'owner.kyc_rejected',
+      'owner',
+      label ?? userId
+    );
     return;
   }
   const p = readDemoProfile();
@@ -1250,6 +1268,11 @@ export async function setKycStatus(userId: string, status: 'verified' | 'rejecte
       localStorage.setItem(DEMO_OWNER_KYC_KEY, JSON.stringify(overrides));
     } catch {}
   }
+  await logAdminAction(
+    status === 'verified' ? 'owner.kyc_verified' : 'owner.kyc_rejected',
+    'owner',
+    label ?? userId
+  );
 }
 
 export async function getSignedDocUrl(path: string): Promise<string> {
@@ -1419,30 +1442,37 @@ export async function getAdminOwners(): Promise<AdminOwner[]> {
   return composeAdminOwners(profiles, applyDemoListingState(MOCK_LISTINGS), reportCountByListing);
 }
 
-export async function setOwnerSuspended(ownerId: string, suspended: boolean): Promise<void> {
+export async function setOwnerSuspended(ownerId: string, suspended: boolean, label?: string): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     const { error } = await sb.from('profiles').update({ suspended }).eq('id', ownerId);
     if (error) throw error;
-    return;
+  } else {
+    const set = new Set(readDemoSuspendedOwners());
+    if (suspended) set.add(ownerId);
+    else set.delete(ownerId);
+    writeDemoIdSet(DEMO_SUSPENDED_OWNERS_KEY, [...set]);
   }
-  const set = new Set(readDemoSuspendedOwners());
-  if (suspended) set.add(ownerId);
-  else set.delete(ownerId);
-  writeDemoIdSet(DEMO_SUSPENDED_OWNERS_KEY, [...set]);
+  await logAdminAction(
+    suspended ? 'owner.suspended' : 'owner.reinstated',
+    'owner',
+    label ?? ownerId
+  );
 }
 
 // Permanent: removes the auth account server-side (profile, listings and
 // rooms follow via ON DELETE CASCADE). Needs SUPABASE_SERVICE_ROLE_KEY on
 // the server — the route answers 503 without it and we surface that.
 export async function deleteOwnerAccount(
-  ownerId: string
+  ownerId: string,
+  label?: string
 ): Promise<{ ok: boolean; message?: string }> {
   const sb = getSupabase();
   if (!sb) {
     const set = new Set(readDemoDeletedOwners());
     set.add(ownerId);
     writeDemoIdSet(DEMO_DELETED_OWNERS_KEY, [...set]);
+    await logAdminAction('owner.deleted', 'owner', label ?? ownerId);
     return { ok: true };
   }
   const { data } = await sb.auth.getSession();
@@ -1458,10 +1488,93 @@ export async function deleteOwnerAccount(
     if (!res.ok || !body.ok) {
       return { ok: false, message: body.message ?? 'Could not delete the account.' };
     }
+    await logAdminAction('owner.deleted', 'owner', label ?? ownerId);
     return { ok: true };
   } catch {
     return { ok: false, message: 'Could not reach the server. Please try again.' };
   }
+}
+
+// ---- Admin action log (migration_admin_log.sql) ----
+// Best-effort audit trail for moderation. logAdminAction NEVER throws:
+// if the table doesn't exist yet (migration not run) the moderation
+// action itself must still succeed, just unlogged.
+
+export type AdminAction = {
+  id: string;
+  adminEmail: string | null;
+  action: string;
+  targetType: 'listing' | 'owner';
+  targetLabel: string | null;
+  createdAt: string;
+};
+
+const DEMO_ADMIN_ACTIONS_KEY = 'bn-demo-admin-actions';
+
+async function logAdminAction(
+  action: string,
+  targetType: 'listing' | 'owner',
+  targetLabel: string | null
+): Promise<void> {
+  try {
+    const sb = getSupabase();
+    if (!sb) {
+      const entry: AdminAction = {
+        id: `demo-action-${Date.now()}`,
+        adminEmail: 'admin@demo.in',
+        action,
+        targetType,
+        targetLabel,
+        createdAt: new Date().toISOString(),
+      };
+      let list: AdminAction[] = [];
+      try {
+        const raw = JSON.parse(localStorage.getItem(DEMO_ADMIN_ACTIONS_KEY) ?? '[]');
+        if (Array.isArray(raw)) list = raw;
+      } catch { /* start fresh */ }
+      list.unshift(entry);
+      localStorage.setItem(DEMO_ADMIN_ACTIONS_KEY, JSON.stringify(list.slice(0, 100)));
+      return;
+    }
+    const { data } = await sb.auth.getSession();
+    const u = data.session?.user;
+    if (!u) return;
+    await sb.from('admin_actions').insert({
+      admin_id: u.id,
+      admin_email: u.email ?? null,
+      action,
+      target_type: targetType,
+      target_label: targetLabel,
+    });
+  } catch {
+    /* logging must never break moderation */
+  }
+}
+
+export async function getAdminActions(): Promise<AdminAction[]> {
+  const sb = getSupabase();
+  if (!sb) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(DEMO_ADMIN_ACTIONS_KEY) ?? '[]');
+      return Array.isArray(raw) ? raw.slice(0, 30) : [];
+    } catch {
+      return [];
+    }
+  }
+  const { data, error } = await sb
+    .from('admin_actions')
+    .select('id, admin_email, action, target_type, target_label, created_at')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if (error || !data) return []; // table missing (migration not run) — show empty
+  return data.map((r) => ({
+    id: r.id as string,
+    adminEmail: (r.admin_email as string | null) ?? null,
+    action: r.action as string,
+    targetType: r.target_type as 'listing' | 'owner',
+    targetLabel: (r.target_label as string | null) ?? null,
+    createdAt: r.created_at as string,
+  }));
 }
 
 // Upsert used by the owner OTP registration flow (profile may not exist yet).

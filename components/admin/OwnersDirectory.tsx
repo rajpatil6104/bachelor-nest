@@ -122,7 +122,7 @@ export default function OwnersDirectory() {
     setNote('');
     setNoteError('');
     try {
-      await setKycStatus(o.id, status);
+      await setKycStatus(o.id, status, o.email);
       patchOwner(o.id, { kyc_status: status });
       if (status === 'verified') {
         const r = await sendVerifiedEmail(o.email, o.full_name);
@@ -155,7 +155,7 @@ export default function OwnersDirectory() {
     setNote('');
     setNoteError('');
     try {
-      await setOwnerSuspended(o.id, next);
+      await setOwnerSuspended(o.id, next, o.email);
       patchOwner(o.id, { suspended: next });
       setNote(
         next
@@ -181,7 +181,7 @@ export default function OwnersDirectory() {
     setActing(o.id);
     setNote('');
     setNoteError('');
-    const r = await deleteOwnerAccount(o.id);
+    const r = await deleteOwnerAccount(o.id, o.email);
     setActing(null);
     if (!r.ok) {
       setNoteError(r.message ?? 'Could not delete the account.');

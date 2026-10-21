@@ -35,7 +35,7 @@ export default function KycReview() {
     // updaters) and is a side effect where it doesn't belong.
     const target = profiles.find((p) => p.id === id);
     try {
-      await setKycStatus(id, status);
+      await setKycStatus(id, status, target?.email ?? undefined);
       setProfiles((prev) => prev.filter((p) => p.id !== id));
       if (target && status === 'verified') {
         const r = await sendVerifiedEmail(target.email, target.full_name);
